@@ -26,6 +26,10 @@ async fn root() -> Response {
 
 async fn derivative(Path(extra): Path<String>) -> Response {
     let mut path = String::from("html/");
+    let mut extra = extra;
+    if extra.starts_with("..") {
+        extra.drain(0..2);
+    }
     println!("Retriving file {}", &extra);
     path.push_str(extra.as_str());
     let contents = match fs::read(path).await {
