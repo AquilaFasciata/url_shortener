@@ -6,6 +6,7 @@ use axum::{
     Router,
 };
 use tokio::fs;
+use regex::Regex;
 
 #[tokio::main]
 async fn main() {
@@ -37,6 +38,7 @@ async fn derivative(Path(extra): Path<String>) -> Response {
         Ok(content) => content,
         Err(_) => return StatusCode::NOT_FOUND.into_response(),
     };
+    let file_ext_regex = Regex::new(r"\.\w+$");
     let html = Html::from(contents);
     return html.into_response();
 }
