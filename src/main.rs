@@ -25,6 +25,7 @@ async fn root() -> Response {
 }
 
 async fn derivative(Path(extra): Path<String>) -> Response {
+    // TODO Seperate Html and CSS responses
     let mut path = String::from("html/");
     let mut extra = extra;
     if extra.starts_with("..") {
