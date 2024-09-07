@@ -5,7 +5,7 @@ use axum::{
         header::{self, HeaderValue},
         StatusCode,
     },
-    response::{Html, IntoResponse, Redirect, Response},
+    response::{Html, IntoResponse, Response},
     routing::get,
     Router,
 };
