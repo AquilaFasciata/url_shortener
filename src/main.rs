@@ -12,6 +12,8 @@ use axum::{
 use regex::Regex;
 use tokio::fs;
 
+mod db;
+
 #[tokio::main]
 async fn main() {
     let router = Router::new();
