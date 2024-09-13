@@ -11,18 +11,34 @@ use axum::{
 };
 use regex::Regex;
 use tokio::fs;
+use sqlx::postgres::PgPoolOptions;
 
 mod db;
 
+const USER: &str = "postgres";
+const PASS: &str = env!("db_pass", "Please set db_pass env variable \
+    with your PostgreSQL password");
+
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), sqlx::Error> {
     let router = Router::new();
+    let pool = PgPoolOptions::new()
+        .max_connections(10)
+        .connect(format!("postgres://{USER}:{PASS}@localhost/shortener").as_str()).await?;
+
+    let row: (i64, ) = sqlx::query_as("SELECT $1")
+        .bind(150_i64)
+        .fetch_one(&pool).await?;
+
+    assert_eq!(row.0, 150);
 
     let app = router
         .route("/", get(root))
         .route("/:extra", get(derivative));
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve(listener, app).await.unwrap();
+
+    Ok(())
 }
 
 async fn root() -> Response {
