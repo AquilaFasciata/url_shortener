@@ -15,6 +15,7 @@ use sqlx::postgres::PgPoolOptions;
 
 mod db;
 
+// This is only for development -- will move out to env variable or conf file.
 const USER: &str = "postgres";
 const PASS: &str = env!("db_pass", "Please set db_pass env variable \
     with your PostgreSQL password");
@@ -22,15 +23,17 @@ const PASS: &str = env!("db_pass", "Please set db_pass env variable \
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     let router = Router::new();
+    let url = format!("postgres://{USER}:{PASS}@172.17.0.2/shortener");
+    println!("Connecting to {}", &url);
     let pool = PgPoolOptions::new()
         .max_connections(10)
-        .connect(format!("postgres://{USER}:{PASS}@localhost/shortener").as_str()).await?;
+        .connect(url.as_str()).await?;
 
     let row: (i64, ) = sqlx::query_as("SELECT $1")
         .bind(150_i64)
         .fetch_one(&pool).await?;
 
-    assert_eq!(row.0, 150);
+    println!("{}", row.0);
 
     let app = router
         .route("/", get(root))
