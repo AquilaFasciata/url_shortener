@@ -19,21 +19,16 @@ mod db;
 const USER: &str = "postgres";
 const PASS: &str = env!("db_pass", "Please set db_pass env variable \
     with your PostgreSQL password");
+const MAX_CONN: u32 = 10;
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     let router = Router::new();
     let url = format!("postgres://{USER}:{PASS}@172.17.0.2/shortener");
-    println!("Connecting to {}", &url);
+    // This pool is to be used throughout
     let pool = PgPoolOptions::new()
-        .max_connections(10)
+        .max_connections(MAX_CONN)
         .connect(url.as_str()).await?;
-
-    let row: (i64, ) = sqlx::query_as("SELECT $1")
-        .bind(150_i64)
-        .fetch_one(&pool).await?;
-
-    println!("{}", row.0);
 
     let app = router
         .route("/", get(root))
