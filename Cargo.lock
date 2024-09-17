@@ -1759,6 +1759,7 @@ dependencies = [
  "axum",
  "regex",
  "serde",
+ "sha2",
  "sqlx",
  "tokio",
 ]
