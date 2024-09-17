@@ -6,8 +6,8 @@ edition = "2021"
 [dependencies]
 askama = "0.12.1"
 axum = "0.7.5"
+rand = "0.8.5"
 regex = "1.10.6"
 serde = "1.0.209"
-sha2 = "0.10.8"
 sqlx = { version = "0.8.2", features = ["postgres", "runtime-tokio"] }
 tokio = { version = "1.40.0", features = ["full"] }

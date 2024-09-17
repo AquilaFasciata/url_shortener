@@ -1757,9 +1757,9 @@ version = "0.1.0"
 dependencies = [
  "askama",
  "axum",
+ "rand",
  "regex",
  "serde",
- "sha2",
  "sqlx",
  "tokio",
 ]
