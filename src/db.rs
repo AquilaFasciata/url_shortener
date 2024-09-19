@@ -1,5 +1,5 @@
 use sqlx::FromRow;
-use rand::SeedableRng;
+use uuid::Uuid;
 
 #[derive(FromRow)]
 pub struct UrlRow {
@@ -7,7 +7,7 @@ pub struct UrlRow {
     shorturl: String,
     longurl: String,
     created_by: Option<i64>,
-    clicks: i64
+    clicks: i64,
 }
 
 #[derive(FromRow)]
@@ -15,17 +15,18 @@ pub struct UserRow {
     id: i64,
     username: String,
     hashed_pw: String,
-    email: String
+    email: String,
 }
 
-pub fn create_url(long_url: &str, user_id: Option<i64>, connection_pool: sqlx::Pool) -> Result<&str, sqlx::Error> {
-     
+pub fn create_url(
+    long_url: &str,
+    user_id: Option<i64>,
+    connection_pool: sqlx::Pool,
+) -> Result<&str, sqlx::Error> {
 }
 
-fn gen_url_keyword(long_url: &str) {
-    let alphabet_arr = [
-        ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'],
-        ['k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't'],
-        ['u', 'v', 'w', 'x', 'y', 'z', 'a', 'b', 'c', 'd']
-    ];
+fn gen_url_keyword(long_url: &str) -> &str {
+    let uuid = Uuid::new_v3(&Uuid::NAMESPACE_OID, &long_url.as_bytes());
 }
+
+fn does_keyword_exist(keyword: &str, pool: sqlx::PgPool) -> bool {}

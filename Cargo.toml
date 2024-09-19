@@ -11,3 +11,4 @@ regex = "1.10.6"
 serde = "1.0.209"
 sqlx = { version = "0.8.2", features = ["postgres", "runtime-tokio"] }
 tokio = { version = "1.40.0", features = ["full"] }
+uuid = { version = "1.10.0", features = ["v3", "fast-rng", "md5"] }

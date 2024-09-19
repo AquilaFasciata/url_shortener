@@ -10,16 +10,20 @@ use axum::{
     Router,
 };
 use regex::Regex;
-use tokio::fs;
 use sqlx::postgres::PgPoolOptions;
+use tokio::fs;
 
 mod db;
 
 // This is only for development -- will move out to env variable or conf file.
 const USER: &str = "postgres";
-const PASS: &str = env!("db_pass", "Please set db_pass env variable \
-    with your PostgreSQL password");
+const PASS: &str = env!(
+    "db_pass",
+    "Please set db_pass env variable \
+    with your PostgreSQL password"
+);
 const MAX_CONN: u32 = 10;
+const DEFAULT_URL_LEN: u8 = 6;
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
@@ -28,7 +32,8 @@ async fn main() -> Result<(), sqlx::Error> {
     // This pool is to be used throughout
     let pool = PgPoolOptions::new()
         .max_connections(MAX_CONN)
-        .connect(url.as_str()).await?;
+        .connect(url.as_str())
+        .await?;
 
     let app = router
         .route("/", get(root))
