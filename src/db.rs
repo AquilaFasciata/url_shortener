@@ -1,6 +1,10 @@
 use super::DEFAULT_URL_LEN;
-use core::str;
+use rand::{
+    distributions::{Alphanumeric, DistString},
+    prelude::*,
+};
 use sqlx::FromRow;
+use std::{result::Result, str};
 use uuid::Uuid;
 
 #[derive(FromRow)]
@@ -23,22 +27,61 @@ pub struct UserRow {
 pub async fn create_url(
     long_url: &str,
     user_id: Option<i64>,
-    connection_pool: sqlx::Pool,
-) -> Result<&str, sqlx::Error> {
-    let mut uuid: &str;
-    loop {}
+    connection_pool: sqlx::PgPool,
+) -> String {
+    let temp_long = gen_url_longword(long_url);
+    let mut short_url = String::new();
+
+    for keyword in temp_long.windows(DEFAULT_URL_LEN) {
+        let keyword_str =
+            str::from_utf8(keyword).expect("Error parsing str. This shouldn't be possible!");
+        match retrieve_url(keyword_str, &connection_pool).await {
+            Ok(_) => {
+                short_url =
+                    String::from_utf8(Vec::from(keyword)).expect("Error iterpreting short url set")
+            }
+            Err(_) => break,
+        }
+    }
+
+    // Checking if there is a successful URL generated from uuid
+    if short_url.is_empty() {
+        let mut rng = thread_rng();
+        loop {
+            short_url = Alphanumeric.sample_string(&mut rng, DEFAULT_URL_LEN);
+            if retrieve_url(&short_url, &connection_pool)
+                .await
+                .unwrap()
+                .is_empty()
+            {
+                break;
+            }
+        }
+    }
+
+    
+
+    return short_url;
 }
 
-pub async fn retrieve_url(url: &str, pool: &sqlx::PgPool) -> Result<UrlRow, sqlx::Error> {
-    sqlx::query_as("SELECT $1 FROM urls")
+pub async fn retrieve_url(
+    url: &str,
+    pool: &sqlx::PgPool,
+) -> Result<std::string::String, sqlx::Error> {
+    let response: UrlRow = sqlx::query_as("SELECT * FROM urls WHERE shorturl = $1")
         .bind(url)
         .fetch_one(pool)
-        .await
+        .await?;
+    return Ok(response.longurl);
 }
 
-fn gen_url_longword(long_url: &str) -> (&str, [u8; uuid::fmt::Simple::LENGTH]) {
+fn gen_url_longword(long_url: &str) -> Vec<u8> {
     let uuid = Uuid::new_v3(&Uuid::NAMESPACE_OID, &long_url.as_bytes());
     let mut return_buff = [0_u8; uuid::fmt::Simple::LENGTH];
-    let return_str = uuid.as_simple().encode_lower(&mut return_buff);
-    return (return_str, return_buff);
+    uuid.as_simple().encode_lower(&mut return_buff);
+    return return_buff.to_vec();
 }
+
+async fn url_db_create(
+
+)

@@ -1,5 +1,5 @@
 CREATE TABLE "users"(
-    "id" BIGINT NOT NULL,
+    "id" BIGSERIAL NOT NULL,
     "username" TEXT NOT NULL,
     "hashed_pw" TEXT NOT NULL,
     "email" TEXT NOT NULL
@@ -7,10 +7,10 @@ CREATE TABLE "users"(
 ALTER TABLE
     "users" ADD PRIMARY KEY("id");
 CREATE TABLE "urls"(
-    "id" BIGINT NOT NULL,
+    "id" BIGSERIAL NOT NULL,
     "shorturl" TEXT NOT NULL,
     "longurl" TEXT NOT NULL,
-    "created_by" BIGINT NULL,
+    "created_by" BIGSERIAL NULL,
     "clicks" BIGINT NOT NULL
 );
 CREATE INDEX "urls_shorturl_index" ON

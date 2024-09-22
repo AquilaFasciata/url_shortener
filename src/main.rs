@@ -23,7 +23,7 @@ const PASS: &str = env!(
     with your PostgreSQL password"
 );
 const MAX_CONN: u32 = 10;
-const DEFAULT_URL_LEN: u8 = 6;
+const DEFAULT_URL_LEN: usize = 6;
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
