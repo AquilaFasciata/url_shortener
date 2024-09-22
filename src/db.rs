@@ -1,7 +1,6 @@
 use super::DEFAULT_URL_LEN;
 use core::str;
 use sqlx::FromRow;
-use std::str::from_utf8;
 use uuid::Uuid;
 
 #[derive(FromRow)]
@@ -21,17 +20,25 @@ pub struct UserRow {
     email: String,
 }
 
-pub fn create_url(
+pub async fn create_url(
     long_url: &str,
     user_id: Option<i64>,
     connection_pool: sqlx::Pool,
 ) -> Result<&str, sqlx::Error> {
+    let mut uuid: &str;
+    loop {}
 }
 
-fn gen_url_longword(long_url: &str) -> &str {
-    let mut buffer: [u8; 16] = [0; 16];
+pub async fn retrieve_url(url: &str, pool: &sqlx::PgPool) -> Result<UrlRow, sqlx::Error> {
+    sqlx::query_as("SELECT $1 FROM urls")
+        .bind(url)
+        .fetch_one(pool)
+        .await
+}
+
+fn gen_url_longword(long_url: &str) -> (&str, [u8; uuid::fmt::Simple::LENGTH]) {
     let uuid = Uuid::new_v3(&Uuid::NAMESPACE_OID, &long_url.as_bytes());
-    uuid.clone().as_simple().encode_lower(&mut buffer);
-    let buff_str = str::from_utf8(&(buffer.clone())).unwrap();
-    return buff_str;
+    let mut return_buff = [0_u8; uuid::fmt::Simple::LENGTH];
+    let return_str = uuid.as_simple().encode_lower(&mut return_buff);
+    return (return_str, return_buff);
 }
