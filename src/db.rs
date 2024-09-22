@@ -59,8 +59,6 @@ pub async fn create_url(
         }
     }
 
-    
-
     return short_url;
 }
 
@@ -82,6 +80,4 @@ fn gen_url_longword(long_url: &str) -> Vec<u8> {
     return return_buff.to_vec();
 }
 
-async fn url_db_create(
-
-)
+async fn url_db_create(new_row: UrlRow) -> bool {}
