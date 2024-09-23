@@ -3,7 +3,7 @@ use rand::{
     distributions::{Alphanumeric, DistString},
     prelude::*,
 };
-use sqlx::FromRow;
+use sqlx::{postgres::PgQueryResult, FromRow};
 use std::{result::Result, str};
 use uuid::Uuid;
 
@@ -32,11 +32,13 @@ pub async fn create_url(
     let temp_long = gen_url_longword(long_url);
     let mut short_url = String::new();
 
+    // Cycle through intil there is a window that is unused
     for keyword in temp_long.windows(DEFAULT_URL_LEN) {
         let keyword_str =
             str::from_utf8(keyword).expect("Error parsing str. This shouldn't be possible!");
         match retrieve_url(keyword_str, &connection_pool).await {
-            Ok(_) => {
+            Ok(response) => {
+                if response.len()
                 short_url =
                     String::from_utf8(Vec::from(keyword)).expect("Error iterpreting short url set")
             }
@@ -44,7 +46,8 @@ pub async fn create_url(
         }
     }
 
-    // Checking if there is a successful URL generated from uuid
+    // Checking if there is a successful URL generated from uuid and generating random if there are
+    // collisions
     if short_url.is_empty() {
         let mut rng = thread_rng();
         loop {
@@ -80,4 +83,6 @@ fn gen_url_longword(long_url: &str) -> Vec<u8> {
     return return_buff.to_vec();
 }
 
-async fn url_db_create(new_row: UrlRow) -> bool {}
+async fn url_db_create(new_row: UrlRow, pool: &sqlx::PgPool) -> Result<PgQueryResult, sqlx::Error> {
+    
+}
