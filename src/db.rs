@@ -84,5 +84,5 @@ fn gen_url_longword(long_url: &str) -> Vec<u8> {
 }
 
 async fn url_db_create(new_row: UrlRow, pool: &sqlx::PgPool) -> Result<PgQueryResult, sqlx::Error> {
-    
+    sqlx::query("INSERT INTO url (id, shorturl, longurl, created_by, clicks) VALUES ()")
 }
