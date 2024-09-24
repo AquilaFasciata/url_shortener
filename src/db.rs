@@ -38,11 +38,15 @@ pub async fn create_url(
             str::from_utf8(keyword).expect("Error parsing str. This shouldn't be possible!");
         match retrieve_url(keyword_str, &connection_pool).await {
             Ok(response) => {
-                if response.len()
-                short_url =
-                    String::from_utf8(Vec::from(keyword)).expect("Error iterpreting short url set")
+                if response.is_empty() {
+                    short_url = String::from_utf8(Vec::from(keyword))
+                        .expect("Error iterpreting short url set")
+                }
             }
             Err(_) => break,
+        }
+        if !short_url.is_empty() {
+            break;
         }
     }
 
@@ -84,5 +88,10 @@ fn gen_url_longword(long_url: &str) -> Vec<u8> {
 }
 
 async fn url_db_create(new_row: UrlRow, pool: &sqlx::PgPool) -> Result<PgQueryResult, sqlx::Error> {
-    sqlx::query("INSERT INTO url (id, shorturl, longurl, created_by, clicks) VALUES ()")
+    sqlx::query("INSERT INTO url (shorturl, longurl, created_by, clicks) VALUES ($1, $2, $3, 0)")
+        .bind(new_row.shorturl)
+        .bind(new_row.longurl)
+        .bind(new_row.created_by)
+        .execute(pool)
+        .await
 }
