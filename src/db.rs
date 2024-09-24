@@ -105,3 +105,13 @@ async fn url_db_create(new_row: UrlRow, pool: &sqlx::PgPool) -> Result<PgQueryRe
         .execute(pool)
         .await
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn make_url() {
+        todo!();
+    }
+}
