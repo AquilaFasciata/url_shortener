@@ -28,7 +28,7 @@ pub async fn create_url(
     long_url: &str,
     user_id: Option<i64>,
     connection_pool: sqlx::PgPool,
-) -> String {
+) -> Result<String, sqlx::Error> {
     let temp_long = gen_url_longword(long_url);
     let mut short_url = String::new();
 
@@ -66,7 +66,17 @@ pub async fn create_url(
         }
     }
 
-    return short_url;
+    let new_row = UrlRow {
+        id: -1,
+        shorturl: short_url.clone(),
+        longurl: long_url.to_string(),
+        created_by: user_id,
+        clicks: -1,
+    };
+
+    url_db_create(new_row, &connection_pool).await?;
+
+    return Ok(short_url);
 }
 
 pub async fn retrieve_url(
