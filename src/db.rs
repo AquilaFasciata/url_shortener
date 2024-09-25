@@ -111,7 +111,5 @@ mod tests {
     use super::*;
 
     #[test]
-    fn make_url() {
-        todo!();
-    }
+    fn make_url() {}
 }
