@@ -108,8 +108,17 @@ async fn url_db_create(new_row: UrlRow, pool: &sqlx::PgPool) -> Result<PgQueryRe
 
 #[cfg(test)]
 mod tests {
+    use sqlx::postgres::PgPoolOptions;
+
     use super::*;
+    use super::super::{PASS, USER};
 
     #[test]
-    fn make_url() {}
+    fn make_url() {
+        let url = format!("postgres://{USER}:{PASS}@172.17.0.2/shortener");
+        let pool = PgPoolOptions::new()
+            .max_connections(2)
+            .connect(url.as_str())
+        let url = create_url("https://example.com", None, )
+    }
 }
