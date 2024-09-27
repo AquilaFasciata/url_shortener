@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 #[derive(FromRow, Debug)]
 pub struct UrlRow {
+    // If fields are updated, update UrlRowIterator
     id: i64,
     shorturl: String,
     longurl: String,
@@ -87,6 +88,13 @@ pub async fn retrieve_url(
         .fetch_one(pool)
         .await?;
     return Ok(response.longurl);
+}
+
+pub async fn delete_url(id: i64, pool: &sqlx::PgPool) -> Result<PgQueryResult, sqlx::Error> {
+    sqlx::query("DELETE FROM urls WHERE id = $1")
+        .bind(id)
+        .execute(pool)
+        .await
 }
 
 pub async fn retrieve_url_obj(url: &str, pool: &sqlx::PgPool) -> Result<UrlRow, sqlx::Error> {
