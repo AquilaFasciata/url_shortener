@@ -1,4 +1,5 @@
 use super::DEFAULT_URL_LEN;
+use base64::{engine::general_purpose, prelude::*};
 use rand::{
     distributions::{Alphanumeric, DistString},
     prelude::*,
@@ -66,7 +67,7 @@ pub async fn create_url(
         }
     }
 
-    let new_row = UrlRow {
+    let mut new_row = UrlRow {
         id: -1,
         shorturl: short_url.clone(),
         longurl: long_url.to_string(),
@@ -106,22 +107,22 @@ pub async fn retrieve_url_obj(url: &str, pool: &sqlx::PgPool) -> Result<UrlRow, 
 }
 
 fn gen_url_longword(long_url: &str) -> Vec<u8> {
-    let uuid = Uuid::new_v3(&Uuid::NAMESPACE_OID, &long_url.as_bytes());
-    let mut return_buff = [0_u8; uuid::fmt::Simple::LENGTH];
-    uuid.as_simple().encode_lower(&mut return_buff);
-    return return_buff.to_vec();
+    let long_word = general_purpose::STANDARD_NO_PAD.encode(long_url.as_bytes());
+    return Vec::from(long_word.as_bytes());
 }
 
-async fn url_db_create(
-    new_row: &UrlRow,
-    pool: &sqlx::PgPool,
-) -> Result<PgQueryResult, sqlx::Error> {
-    sqlx::query("INSERT INTO urls (shorturl, longurl, created_by, clicks) VALUES ($1, $2, $3, 0)")
-        .bind(new_row.shorturl.clone())
-        .bind(new_row.longurl.clone())
-        .bind(new_row.created_by)
-        .execute(pool)
-        .await
+async fn url_db_create(new_row: &UrlRow, pool: &sqlx::PgPool) -> Result<i64, sqlx::Error> {
+    let query_result = sqlx::query(
+        "INSERT INTO urls (shorturl, longurl, created_by, clicks) VALUES ($1, $2, $3, 0)",
+    )
+    .bind(new_row.shorturl.clone())
+    .bind(new_row.longurl.clone())
+    .bind(new_row.created_by)
+    .execute(pool)
+    .await?;
+
+    let new_id = retrieve_url_obj(new_row.shorturl.as_str(), &pool).await?.id;
+    return Ok(new_id);
 }
 
 #[cfg(test)]
