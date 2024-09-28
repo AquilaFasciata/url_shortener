@@ -8,6 +8,7 @@ use sqlx::{postgres::PgQueryResult, FromRow};
 use std::{result::Result, str};
 
 #[derive(FromRow, Debug)]
+#[allow(dead_code)]
 pub struct UrlRow {
     // If fields are updated, update UrlRowIterator
     id: i64,
@@ -18,6 +19,7 @@ pub struct UrlRow {
 }
 
 #[derive(FromRow)]
+#[allow(dead_code)]
 pub struct UserRow {
     id: i64,
     username: String,

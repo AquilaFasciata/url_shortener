@@ -13,7 +13,7 @@ use regex::Regex;
 use sqlx::postgres::PgPoolOptions;
 use tokio::fs;
 
-mod db;
+mod url_db;
 
 // This is only for development -- will move out to env variable or conf file.
 const USER: &str = "postgres";
