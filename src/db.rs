@@ -6,7 +6,6 @@ use rand::{
 };
 use sqlx::{postgres::PgQueryResult, FromRow};
 use std::{result::Result, str};
-use uuid::Uuid;
 
 #[derive(FromRow, Debug)]
 pub struct UrlRow {
@@ -80,17 +79,20 @@ pub async fn create_url(
     return Ok(new_row);
 }
 
+/// Retrieves a Long Url from the database
 pub async fn retrieve_url(
     url: &str,
     pool: &sqlx::PgPool,
 ) -> Result<std::string::String, sqlx::Error> {
-    let response: UrlRow = sqlx::query_as("SELECT * FROM urls WHERE shorturl = $1")
+    let response = sqlx::query_scalar("SELECT longurl FROM urls WHERE shorturl = $1")
         .bind(url)
         .fetch_one(pool)
         .await?;
-    return Ok(response.longurl);
+    return Ok(response);
 }
 
+/// Deletes a url entry in the databse by id. Returns a sqlx::PgQueryResult on success and
+/// sqlx::Error on failure
 pub async fn delete_url(id: i64, pool: &sqlx::PgPool) -> Result<PgQueryResult, sqlx::Error> {
     sqlx::query("DELETE FROM urls WHERE id = $1")
         .bind(id)
@@ -98,6 +100,8 @@ pub async fn delete_url(id: i64, pool: &sqlx::PgPool) -> Result<PgQueryResult, s
         .await
 }
 
+/// Retrieve a UrlRow object WHERE shorturl = $url
+/// This will return a UrlRow, or a sqlx::Error upon failure
 pub async fn retrieve_url_obj(url: &str, pool: &sqlx::PgPool) -> Result<UrlRow, sqlx::Error> {
     let response: UrlRow = sqlx::query_as("SELECT * FROM urls WHERE shorturl = $1")
         .bind(url)
@@ -106,20 +110,21 @@ pub async fn retrieve_url_obj(url: &str, pool: &sqlx::PgPool) -> Result<UrlRow, 
     return Ok(response);
 }
 
+/// Creates a long string from which we can use to create a short url
 fn gen_url_longword(long_url: &str) -> Vec<u8> {
     let long_word = general_purpose::STANDARD_NO_PAD.encode(long_url.as_bytes());
     return Vec::from(long_word.as_bytes());
 }
 
+/// Creates the UrlRow object in the PostgreSQL database and returns the id of the newly created
+/// row
 async fn url_db_create(new_row: &UrlRow, pool: &sqlx::PgPool) -> Result<i64, sqlx::Error> {
-    let query_result = sqlx::query(
-        "INSERT INTO urls (shorturl, longurl, created_by, clicks) VALUES ($1, $2, $3, 0)",
-    )
-    .bind(new_row.shorturl.clone())
-    .bind(new_row.longurl.clone())
-    .bind(new_row.created_by)
-    .execute(pool)
-    .await?;
+    sqlx::query("INSERT INTO urls (shorturl, longurl, created_by, clicks) VALUES ($1, $2, $3, 0)")
+        .bind(new_row.shorturl.clone())
+        .bind(new_row.longurl.clone())
+        .bind(new_row.created_by)
+        .execute(pool)
+        .await?;
 
     let new_id = retrieve_url_obj(new_row.shorturl.as_str(), &pool).await?.id;
     return Ok(new_id);
@@ -138,14 +143,13 @@ mod tests {
         with your PostgreSQL password"
     );
     const MAX_CONN: u32 = 10;
-    const DEFAULT_URL_LEN: usize = 6;
     static mut TEST_SHORT: String = String::new();
 
     #[sqlx::test]
     async fn make_url() {
         let conn_url = format!("postgres://{USER}:{PASS}@172.17.0.2/testdb");
         let pool = PgPoolOptions::new()
-            .max_connections(3)
+            .max_connections(MAX_CONN)
             .connect(&conn_url)
             .await
             .unwrap();
@@ -169,7 +173,7 @@ mod tests {
     async fn test_retrieve_url() {
         let conn_url = format!("postgres://{USER}:{PASS}@172.17.0.2/testdb");
         let pool = PgPoolOptions::new()
-            .max_connections(3)
+            .max_connections(MAX_CONN)
             .connect(&conn_url)
             .await
             .unwrap();
@@ -177,8 +181,15 @@ mod tests {
         let url_row: UrlRow;
         unsafe {
             url_row = retrieve_url_obj(TEST_SHORT.as_str(), &pool).await.unwrap();
+            println!("Short url is: {}", TEST_SHORT);
         }
         assert_eq!(url_row.longurl, "https://example.com");
         assert_eq!(url_row.created_by, None);
+        let url_row: String;
+        unsafe {
+            url_row = retrieve_url(TEST_SHORT.as_str(), &pool).await.unwrap();
+            println!("Short url is: {}", TEST_SHORT);
+        }
+        assert_eq!(url_row, "https://example.com");
     }
 }
