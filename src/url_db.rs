@@ -136,7 +136,7 @@ async fn url_db_create(new_row: &UrlRow, pool: &sqlx::PgPool) -> Result<i64, sql
 
 #[cfg(test)]
 mod tests {
-    use sqlx::postgres::PgPoolOptions;
+    use sqlx::{postgres::PgPoolOptions, PgPool, Postgres};
 
     use super::*;
 
@@ -149,15 +149,20 @@ mod tests {
     const MAX_CONN: u32 = 10;
     static mut TEST_SHORT: String = String::new();
 
-    #[sqlx::test]
-    async fn make_url() {
+    async fn pool_init() -> PgPool {
         let conn_url = format!("postgres://{USER}:{PASS}@172.17.0.2/testdb");
         let pool = PgPoolOptions::new()
             .max_connections(MAX_CONN)
             .connect(&conn_url)
             .await
-            .unwrap();
+            .expect("Couldn't create connection pool. Are your credentials correct?");
 
+        return pool;
+    }
+
+    #[sqlx::test]
+    async fn test_make_url() {
+        let pool = pool_init().await;
         let short_row: UrlRow = create_url("https://example.com", None, &pool)
             .await
             .unwrap();
@@ -175,25 +180,44 @@ mod tests {
 
     #[sqlx::test]
     async fn test_retrieve_url() {
-        let conn_url = format!("postgres://{USER}:{PASS}@172.17.0.2/testdb");
-        let pool = PgPoolOptions::new()
-            .max_connections(MAX_CONN)
-            .connect(&conn_url)
-            .await
-            .unwrap();
+        let pool = pool_init().await;
 
         let url_row: UrlRow;
         unsafe {
-            url_row = retrieve_url_obj(TEST_SHORT.as_str(), &pool).await.unwrap();
-            println!("Short url is: {}", TEST_SHORT);
+            url_row = retrieve_url_obj(TEST_SHORT.clone().as_str(), &pool)
+                .await
+                .unwrap();
         }
         assert_eq!(url_row.longurl, "https://example.com");
         assert_eq!(url_row.created_by, None);
         let url_row: String;
         unsafe {
+            eprintln!("Short url is: {}", TEST_SHORT);
             url_row = retrieve_url(TEST_SHORT.as_str(), &pool).await.unwrap();
-            println!("Short url is: {}", TEST_SHORT);
         }
         assert_eq!(url_row, "https://example.com");
+    }
+
+    #[sqlx::test]
+    async fn test_delete_url() {
+        let pool = pool_init().await;
+
+        sqlx::query("INSERT INTO urls (id, shorturl, longurl, created_by, clicks) VALUES (1, 'test', 'https://example.com', NULL, 0);")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        delete_url(1, &pool).await.expect("Error deleting row");
+    }
+
+    #[sqlx::test]
+    async fn test_retrieve_enonexistant_url() {
+        let pool = pool_init().await;
+
+        let url = "247eadf89a518526cd34fd24aaaaaaaaaa";
+
+        retrieve_url_obj(url, &pool)
+            .await
+            .expect_err("This url shouldn't exist");
     }
 }
