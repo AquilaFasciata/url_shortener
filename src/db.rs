@@ -25,6 +25,7 @@ pub struct UserRow {
     email: String,
 }
 
+/// Creates a UrlRow, inserts it into the PostgreSQL databse, and returns the created UrlRow object
 pub async fn create_url(
     long_url: &str,
     user_id: Option<i64>,
@@ -79,7 +80,8 @@ pub async fn create_url(
     return Ok(new_row);
 }
 
-/// Retrieves a Long Url from the database
+/// Retrieves a Long Url from the database from a Short Url. This is a more efficient function than
+/// retriving the object because the filtering is done on the PostgreSQL server.
 pub async fn retrieve_url(
     url: &str,
     pool: &sqlx::PgPool,
