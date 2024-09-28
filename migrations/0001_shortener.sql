@@ -21,3 +21,20 @@ ALTER TABLE
     "urls" ADD CONSTRAINT "urls_shorturl_unique" UNIQUE("shorturl");
 ALTER TABLE
     "urls" ADD CONSTRAINT "urls_created_by_foreign" FOREIGN KEY("created_by") REFERENCES "users"("id");
+
+INSERT INTO urls (
+    "id",
+    "shorturl",
+    "longurl" ,
+    "created_by",
+    "clicks" 
+)
+	VALUES (
+		1,
+		'test',
+		'test',
+		NULL,
+		0
+	);
+
+DELETE FROM urls WHERE id = 1;

@@ -211,6 +211,13 @@ mod tests {
     }
 
     #[sqlx::test]
+    async fn test_delete_nonexistand_url() {
+        let pool = pool_init().await;
+
+        delete_url(1, &pool).await.expect("Error deleting row");
+    }
+
+    #[sqlx::test]
     async fn test_retrieve_enonexistant_url() {
         let pool = pool_init().await;
 
