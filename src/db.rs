@@ -75,7 +75,7 @@ pub async fn create_url(
         clicks: 0,
     };
 
-    url_db_create(&new_row, &connection_pool).await?;
+    new_row.id = url_db_create(&new_row, &connection_pool).await?;
 
     return Ok(new_row);
 }
