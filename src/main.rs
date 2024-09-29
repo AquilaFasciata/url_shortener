@@ -14,6 +14,7 @@ use sqlx::postgres::PgPoolOptions;
 use tokio::fs;
 
 mod url_db;
+mod user;
 
 // This is only for development -- will move out to env variable or conf file.
 const USER: &str = "postgres";
@@ -24,11 +25,12 @@ const PASS: &str = env!(
 );
 const MAX_CONN: u32 = 10;
 const DEFAULT_URL_LEN: usize = 6;
-
+const DBNAME: &str = "shortener";
+const IPADDR: &str = "172.17.0.2";
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
     let router = Router::new();
-    let url = format!("postgres://{USER}:{PASS}@172.17.0.2/shortener");
+    let url = format!("postgres://{USER}:{PASS}@{IPADDR}/{DBNAME}");
     // This pool is to be used throughout
     let pool = PgPoolOptions::new()
         .max_connections(MAX_CONN)
