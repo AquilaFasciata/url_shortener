@@ -1,5 +1,10 @@
-use super::{DBNAME, IPADDR, PASS, USER};
-use sqlx::{postgres::PgQueryResult, prelude::*};
+use core::str;
+
+use rand::{distributions::Alphanumeric, Rng, SeedableRng};
+use rand_chacha::ChaChaRng;
+use sha2::{Digest, Sha512};
+use sqlx::prelude::*;
+use zeroize::Zeroizing;
 
 #[derive(FromRow)]
 pub struct User {
@@ -9,9 +14,9 @@ pub struct User {
     email: String,
 }
 
-pub async fn create_user(
+pub async fn create_user_db(
     username: String,
-    hashed_pw: String,
+    plain_pw: String,
     email: String,
 ) -> Result<User, sqlx::Error> {
     let user = User {
@@ -44,4 +49,24 @@ async fn add_user_to_db(user: User, pool: &sqlx::PgPool) -> Result<i64, sqlx::Er
     transaction.commit().await?;
 
     return Ok(id);
+}
+
+fn hash_password(password: Zeroizing<String>) -> String {
+    let rng_gen = ChaChaRng::from_entropy();
+    let mut hash_fun = Sha512::new();
+    let salt: String = rng_gen
+        .sample_iter(&Alphanumeric)
+        .take(15)
+        .map(char::from)
+        .collect();
+    let pass_with_salt: Zeroizing<String> =
+        Zeroizing::new([salt.as_str(), password.as_str()].join(""));
+
+    hash_fun.update(pass_with_salt);
+    let hashed_pw = hash_fun.finalize();
+    let hashed_pw = str::from_utf8(&hashed_pw).unwrap();
+    let mut password_to_store = salt;
+    password_to_store.push('#');
+    password_to_store.push_str(hashed_pw);
+    return password_to_store;
 }
