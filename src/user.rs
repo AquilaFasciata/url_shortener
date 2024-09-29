@@ -4,7 +4,15 @@ use rand::{distributions::Alphanumeric, Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use sha2::{Digest, Sha512};
 use sqlx::prelude::*;
-use zeroize::Zeroizing;
+use zeroize::{Zeroize, Zeroizing};
+
+use crate::url_db::UserRow;
+
+enum PasswordResult {
+    Match,
+    NoMatch,
+    NoUser,
+}
 
 #[derive(FromRow)]
 pub struct User {
@@ -19,6 +27,7 @@ pub async fn create_user_db(
     plain_pw: String,
     email: String,
 ) -> Result<User, sqlx::Error> {
+    let hashed_pw = hash_password(Zeroizing::new(plain_pw));
     let user = User {
         id: -1,
         username,
@@ -69,4 +78,19 @@ fn hash_password(password: Zeroizing<String>) -> String {
     password_to_store.push('#');
     password_to_store.push_str(hashed_pw);
     return password_to_store;
+}
+
+pub async fn verify_pw(password: Zeroizing<String>, user: &UserRow) -> PasswordResult {
+    let hasher = Sha512::new();
+    let salt = String::new();
+    salt.reserve(14);
+    for letter in user.hashed_pw.as_str() {
+        if letter != '#' {
+            salt.push(letter);
+            continue;
+        }
+        break;
+    }
+
+    return PasswordResult::Match;
 }

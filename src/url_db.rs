@@ -18,6 +18,7 @@ pub struct UrlRow {
     clicks: i64,
 }
 
+
 #[derive(FromRow)]
 #[allow(dead_code)]
 pub struct UserRow {
@@ -25,6 +26,33 @@ pub struct UserRow {
     username: String,
     hashed_pw: String,
     email: String,
+}
+
+impl UserRow {
+    pub fn hashed_pw(&self) -> &String {
+        &self.hashed_pw
+    }
+    pub fn hashed_pw_mut(&mut self) -> &mut String {
+        &mut self.hashed_pw
+    }
+    pub fn username(&self) -> &String {
+        &self.username
+    }
+    pub fn username_mut(&mut self) -> &mut String {
+        &mut self.username
+    }
+    pub fn email(&self) -> &String {
+        &self.email
+    }
+    pub fn email_mut(&mut self) -> &mut String {
+        &mut self.email
+    }
+    pub fn id(&self) -> &i64 {
+        &self.id
+    }
+    pub fn id_mut(&mut self) -> &mut i64 {
+        &mut self.id
+    }
 }
 
 /// Creates a UrlRow, inserts it into the PostgreSQL databse, and returns the created UrlRow object
