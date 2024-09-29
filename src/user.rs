@@ -80,17 +80,30 @@ fn hash_password(password: Zeroizing<String>) -> String {
     return password_to_store;
 }
 
-pub async fn verify_pw(password: Zeroizing<String>, user: &UserRow) -> PasswordResult {
-    let hasher = Sha512::new();
-    let salt = String::new();
-    salt.reserve(14);
-    for letter in user.hashed_pw.as_str() {
-        if letter != '#' {
-            salt.push(letter);
+pub async fn verify_pw(password: Zeroizing<String>, user: &UserRow) -> bool {
+    let mut hasher = Sha512::new();
+    let mut salted_password = String::new();
+    salted_password.reserve(14);
+
+    // Get hash from hashed_pw
+    let mut delimiter_index: usize = 0;
+    for (i, letter) in user.hashed_pw().as_bytes().iter().enumerate() {
+        if *letter != b'#' {
+            let letter = char::from(*letter);
+            salted_password.push(letter);
             continue;
         }
+        delimiter_index = i + 1;
         break;
     }
 
-    return PasswordResult::Match;
+    salted_password.push_str(password.as_str().get(delimiter_index..).unwrap());
+    hasher.update(salted_password);
+    let hash = hasher.finalize();
+    let hash = str::from_utf8(&hash).unwrap();
+    if hash == user.hashed_pw().as_str() {
+        return true;
+    } else {
+        return false;
+    }
 }
