@@ -18,7 +18,6 @@ pub struct UrlRow {
     clicks: i64,
 }
 
-
 #[derive(FromRow)]
 #[allow(dead_code)]
 pub struct UserRow {
@@ -52,6 +51,14 @@ impl UserRow {
     }
     pub fn id_mut(&mut self) -> &mut i64 {
         &mut self.id
+    }
+    pub fn new(id: i64, username: String, hashed_pw: String, email: String) -> UserRow {
+        UserRow {
+            id,
+            username,
+            hashed_pw,
+            email,
+        }
     }
 }
 

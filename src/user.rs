@@ -14,40 +14,27 @@ enum PasswordResult {
     NoUser,
 }
 
-#[derive(FromRow)]
-pub struct User {
-    id: i64,
-    username: String,
-    hashed_pw: String,
-    email: String,
-}
-
 pub async fn create_user_db(
     username: String,
     plain_pw: String,
     email: String,
-) -> Result<User, sqlx::Error> {
+) -> Result<UserRow, sqlx::Error> {
     let hashed_pw = hash_password(Zeroizing::new(plain_pw));
-    let user = User {
-        id: -1,
-        username,
-        hashed_pw,
-        email,
-    };
+    let user = UserRow::new(-1, username, hashed_pw, email);
 
     return Ok(user);
 }
 
-async fn add_user_to_db(user: User, pool: &sqlx::PgPool) -> Result<i64, sqlx::Error> {
+async fn add_user_to_db(user: UserRow, pool: &sqlx::PgPool) -> Result<i64, sqlx::Error> {
     let mut transaction = pool.begin().await?;
 
     sqlx::query(
         "INSERT INTO users (username, hashed_pw, email) VALUES ($1, $2, $3);
         SELECT currval('users_id_seq');",
     )
-    .bind(user.username)
-    .bind(user.hashed_pw)
-    .bind(user.email)
+    .bind(user.username())
+    .bind(user.hashed_pw())
+    .bind(user.email())
     .execute(&mut *transaction)
     .await?;
 
@@ -105,5 +92,26 @@ pub async fn verify_pw(password: Zeroizing<String>, user: &UserRow) -> bool {
         return true;
     } else {
         return false;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use zeroize::Zeroizing;
+
+    use super::*;
+
+    impl UserRow {
+        fn user_with_pass(pass: String) -> UserRow {
+            UserRow::new(-1, String::from("test"), pass, String::from("test"))
+        }
+    }
+
+    #[sqlx::test]
+    fn verify_verify_pw() {
+        let hashed_pass: Zeroizing<String> = Zeroizing::new(String::from("12#4c3fdfe4efb17076577bfedcb6e1fbfff4d14abfdb8f0fc81c9a66fc5ed6a98d0b6e17b1b7175a29a5c4654743bef584feb48655a7701a7a31f8d7bf98e3222d"));
+        let user = UserRow::user_with_pass(hashed_pass.clone().to_string());
+        let clear_pass = Zeroizing::new(String::from("12test"));
+        assert!(super::verify_pw(clear_pass, &user).await);
     }
 }
