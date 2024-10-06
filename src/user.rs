@@ -49,8 +49,21 @@ async fn add_user_to_db(user: UserRow, pool: &sqlx::PgPool) -> Result<i64, sqlx:
 }
 
 fn hash_password(password: Zeroizing<String>) -> String {
-    let rng_gen = ChaChaRng::from_entropy();
     let mut hash_fun = Sha512::new();
+
+    todo!("Finish refactoring to not include salt");
+
+    hash_fun.update(password);
+    let hashed_pw = hash_fun.finalize();
+    let hashed_pw = hex::encode(hashed_pw);
+    let mut password_to_store = salt;
+    password_to_store.push('#');
+    password_to_store.push_str(hashed_pw.as_str());
+    return password_to_store;
+}
+
+fn salt_password(password: Zeroizing<String>) -> (Zeroizing<String>, String) {
+    let rng_gen = ChaChaRng::from_entropy();
     let salt: String = rng_gen
         .sample_iter(&Alphanumeric)
         .take(15)
@@ -58,14 +71,7 @@ fn hash_password(password: Zeroizing<String>) -> String {
         .collect();
     let pass_with_salt: Zeroizing<String> =
         Zeroizing::new([salt.as_str(), password.as_str()].join(""));
-
-    hash_fun.update(pass_with_salt);
-    let hashed_pw = hash_fun.finalize();
-    let hashed_pw = hex::encode(hashed_pw);
-    let mut password_to_store = salt;
-    password_to_store.push('#');
-    password_to_store.push_str(hashed_pw.as_str());
-    return password_to_store;
+    return (pass_with_salt, salt);
 }
 
 #[instrument]
