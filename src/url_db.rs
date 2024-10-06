@@ -27,6 +27,7 @@ pub struct UserRow {
     email: String,
 }
 
+#[allow(dead_code)]
 impl UserRow {
     pub fn hashed_pw(&self) -> &String {
         &self.hashed_pw
@@ -51,6 +52,9 @@ impl UserRow {
     }
     pub fn id_mut(&mut self) -> &mut i64 {
         &mut self.id
+    }
+    pub fn update_id(&mut self, new_id: i64) {
+        self.id = new_id
     }
     pub fn new(id: i64, username: String, hashed_pw: String, email: String) -> UserRow {
         UserRow {
