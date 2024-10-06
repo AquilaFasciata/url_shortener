@@ -18,7 +18,7 @@ pub struct UrlRow {
     clicks: i64,
 }
 
-#[derive(FromRow)]
+#[derive(FromRow, Debug)]
 #[allow(dead_code)]
 pub struct UserRow {
     id: i64,
