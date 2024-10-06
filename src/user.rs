@@ -104,7 +104,11 @@ pub async fn verify_pw(password: Zeroizing<String>, user: &UserRow) -> bool {
     let hashed_pw = hash_salted_password(salted_password);
     debug!("Whole hash in db is {}", user.hashed_pw());
     let stored_hash = user.hashed_pw().as_str().split_at(delimiter_index).1;
-    debug!("Comparing passwords -- Input hash: {hashed_pw}     Stored hash: {stored_hash}");
+    debug!(
+        "Comparing passwords --
+         Input hash: {hashed_pw}
+        Stored hash: {stored_hash}"
+    );
     if hashed_pw == stored_hash {
         return true;
     } else {
