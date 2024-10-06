@@ -1,6 +1,3 @@
-use core::str;
-
-use hex::ToHex;
 use rand::{distributions::Alphanumeric, Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use sha2::{Digest, Sha512};
