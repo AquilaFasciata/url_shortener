@@ -75,7 +75,7 @@ pub async fn create_url(
     for keyword in temp_long.windows(DEFAULT_URL_LEN) {
         let keyword_str =
             str::from_utf8(keyword).expect("Error parsing str. This shouldn't be possible!");
-        match retrieve_url(keyword_str, &connection_pool).await {
+        match retrieve_url(keyword_str, connection_pool).await {
             Ok(response) => {
                 if response.is_empty() {
                     short_url = String::from_utf8(Vec::from(keyword))
@@ -95,7 +95,7 @@ pub async fn create_url(
         let mut rng = thread_rng();
         loop {
             short_url = Alphanumeric.sample_string(&mut rng, DEFAULT_URL_LEN);
-            let req_result = retrieve_url(&short_url, &connection_pool).await;
+            let req_result = retrieve_url(&short_url, connection_pool).await;
             // If there is a response that is empty (no long url) or error (there is no applicable
             // row) then break from the loop (new url found isn't being used)
             if req_result.as_ref().is_ok_and(|res_str| res_str.is_empty()) || req_result.is_err() {
@@ -112,9 +112,9 @@ pub async fn create_url(
         clicks: 0,
     };
 
-    new_row.id = url_db_create(&new_row, &connection_pool).await?;
+    new_row.id = url_db_create(&new_row, connection_pool).await?;
 
-    return Ok(new_row);
+    Ok(new_row)
 }
 
 /// Retrieves a Long Url from the database from a Short Url. This is a more efficient function than
@@ -127,7 +127,7 @@ pub async fn retrieve_url(
         .bind(url)
         .fetch_one(pool)
         .await?;
-    return Ok(response);
+    Ok(response)
 }
 
 /// Deletes a url entry in the databse by id. Returns a sqlx::PgQueryResult on success and
@@ -146,7 +146,7 @@ pub async fn retrieve_url_obj(url: &str, pool: &sqlx::PgPool) -> Result<UrlRow, 
         .bind(url)
         .fetch_one(pool)
         .await?;
-    return Ok(response);
+    Ok(response)
 }
 
 /// Creates a long string from which we can use to create a short url
@@ -165,8 +165,8 @@ async fn url_db_create(new_row: &UrlRow, pool: &sqlx::PgPool) -> Result<i64, sql
         .execute(pool)
         .await?;
 
-    let new_id = retrieve_url_obj(new_row.shorturl.as_str(), &pool).await?.id;
-    return Ok(new_id);
+    let new_id = retrieve_url_obj(new_row.shorturl.as_str(), pool).await?.id;
+    Ok(new_id)
 }
 
 #[cfg(test)]

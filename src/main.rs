@@ -49,7 +49,7 @@ async fn main() -> Result<(), sqlx::Error> {
 async fn root() -> Response {
     let contents = fs::read("html/index.html").await.unwrap();
     let html = Html::from(contents);
-    return html.into_response();
+    html.into_response()
 }
 
 #[forbid(unsafe_code)]
@@ -73,8 +73,8 @@ async fn derivative(Path(extra): Path<String>) -> Response {
     };
     match file_ext.as_str() {
         ".html" => Html::from(contents).into_response(),
-        ".css" => return content_response(contents, HeaderValue::from_static("text/css")),
-        _ => return not_found_handler().await,
+        ".css" => content_response(contents, HeaderValue::from_static("text/css")),
+        _ => not_found_handler().await,
     }
 }
 
@@ -82,7 +82,7 @@ fn content_response(contents: Vec<u8>, content_type: HeaderValue) -> Response {
     let mut resp = Body::from(contents).into_response();
     resp.headers_mut()
         .insert(header::CONTENT_TYPE, content_type);
-    return resp;
+    resp
 }
 
 async fn not_found_handler() -> Response {

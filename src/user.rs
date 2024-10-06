@@ -20,7 +20,7 @@ pub async fn create_user_db(
     let hashed_pw = hash_unsalted_password(Zeroizing::new(plain_pw));
     let user = UserRow::new(-1, username, hashed_pw, email);
 
-    return Ok(user);
+    Ok(user)
 }
 
 async fn add_user_to_db(user: UserRow, pool: &sqlx::PgPool) -> Result<i64, sqlx::Error> {
@@ -42,7 +42,7 @@ async fn add_user_to_db(user: UserRow, pool: &sqlx::PgPool) -> Result<i64, sqlx:
 
     transaction.commit().await?;
 
-    return Ok(id);
+    Ok(id)
 }
 
 fn hash_unsalted_password(password: Zeroizing<String>) -> String {
@@ -55,7 +55,7 @@ fn hash_unsalted_password(password: Zeroizing<String>) -> String {
     let mut password_to_store = salt;
     password_to_store.push('#');
     password_to_store.push_str(hashed_pw.as_str());
-    return password_to_store;
+    password_to_store
 }
 
 fn hash_salted_password(password: Zeroizing<String>) -> String {
@@ -64,7 +64,7 @@ fn hash_salted_password(password: Zeroizing<String>) -> String {
     hash_fun.update(password);
     let hashed_pw = hash_fun.finalize();
     let hashed_pw = hex::encode(hashed_pw);
-    return hashed_pw;
+    hashed_pw
 }
 
 /// Used to salt a plain password. Returns a tuple with (hashed_pw, salt)
@@ -77,7 +77,7 @@ fn salt_password(password: Zeroizing<String>) -> (Zeroizing<String>, String) {
         .collect();
     let pass_with_salt: Zeroizing<String> =
         Zeroizing::new([salt.as_str(), password.as_str()].join(""));
-    return (pass_with_salt, salt);
+    (pass_with_salt, salt)
 }
 
 #[instrument]
@@ -106,11 +106,7 @@ pub async fn verify_pw(password: Zeroizing<String>, user: &UserRow) -> bool {
          Input hash: {hashed_pw}
         Stored hash: {stored_hash}"
     );
-    if hashed_pw == stored_hash {
-        return true;
-    } else {
-        return false;
-    }
+    return hashed_pw == stored_hash
 }
 
 #[cfg(test)]
