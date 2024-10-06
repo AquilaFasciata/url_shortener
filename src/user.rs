@@ -20,7 +20,7 @@ pub async fn create_user_db(
     plain_pw: String,
     email: String,
 ) -> Result<UserRow, sqlx::Error> {
-    let hashed_pw = hash_password(Zeroizing::new(plain_pw));
+    let hashed_pw = hash_unsalted_password(Zeroizing::new(plain_pw));
     let user = UserRow::new(-1, username, hashed_pw, email);
 
     return Ok(user);
@@ -48,11 +48,10 @@ async fn add_user_to_db(user: UserRow, pool: &sqlx::PgPool) -> Result<i64, sqlx:
     return Ok(id);
 }
 
-fn hash_password(password: Zeroizing<String>) -> String {
+fn hash_unsalted_password(password: Zeroizing<String>) -> String {
     let mut hash_fun = Sha512::new();
 
-    todo!("Finish refactoring to not include salt");
-
+    let (password, salt) = salt_password(password);
     hash_fun.update(password);
     let hashed_pw = hash_fun.finalize();
     let hashed_pw = hex::encode(hashed_pw);
@@ -62,6 +61,16 @@ fn hash_password(password: Zeroizing<String>) -> String {
     return password_to_store;
 }
 
+fn hash_salted_password(password: Zeroizing<String>) -> String {
+    let mut hash_fun = Sha512::new();
+
+    hash_fun.update(password);
+    let hashed_pw = hash_fun.finalize();
+    let hashed_pw = hex::encode(hashed_pw);
+    return hashed_pw;
+}
+
+/// Used to salt a plain password. Returns a tuple with (hashed_pw, salt)
 fn salt_password(password: Zeroizing<String>) -> (Zeroizing<String>, String) {
     let rng_gen = ChaChaRng::from_entropy();
     let salt: String = rng_gen
@@ -92,7 +101,7 @@ pub async fn verify_pw(password: Zeroizing<String>, user: &UserRow) -> bool {
     }
 
     salted_password.push_str(password.as_str());
-    let hashed_pw = hash_password(salted_password);
+    let hashed_pw = hash_salted_password(salted_password);
     debug!("Whole hash in db is {}", user.hashed_pw());
     let stored_hash = user.hashed_pw().as_str().split_at(delimiter_index).1;
     debug!("Comparing passwords -- Input hash: {hashed_pw}     Stored hash: {stored_hash}");
@@ -117,7 +126,7 @@ mod tests {
     }
 
     #[sqlx::test]
-    fn verify_verify_pw() {
+    fn verify_matching_pw() {
         let subscriber = tracing_subscriber::FmtSubscriber::builder()
             .with_level(true)
             .with_max_level(Level::DEBUG)
