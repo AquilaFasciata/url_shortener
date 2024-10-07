@@ -66,6 +66,15 @@ impl UserRow {
     }
 }
 
+impl UrlRow {
+    pub fn id(&self) -> i64 {
+        self.id
+    }
+    pub fn longurl(&self) -> &String {
+        &self.longurl
+    }
+}
+
 /// Creates a UrlRow, inserts it into the PostgreSQL databse, and returns the created UrlRow object
 pub async fn create_url(
     long_url: &str,
@@ -132,6 +141,18 @@ pub async fn retrieve_url(
         .fetch_one(pool)
         .await?;
     Ok(response)
+}
+
+pub async fn incr_url_clicks(id: i64, pool: &sqlx::PgPool) {
+    sqlx::query(
+        "UPDATE urls
+        SET clicks = clicks + 1
+        WHERE id = $1",
+    )
+    .bind(id)
+    .execute(pool)
+    .await
+    .unwrap();
 }
 
 /// Deletes a url entry in the databse by id. Returns a sqlx::PgQueryResult on success and

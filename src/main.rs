@@ -1,6 +1,6 @@
 use axum::{
     body::Body,
-    extract::Path,
+    extract::{Path, State},
     http::{
         header::{self, HeaderValue},
         StatusCode,
@@ -10,7 +10,7 @@ use axum::{
     Router,
 };
 use regex::Regex;
-use sqlx::postgres::PgPoolOptions;
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use tokio::fs;
 
 mod url_db;
@@ -24,6 +24,7 @@ const PASS: &str = env!(
     with your PostgreSQL password"
 );
 const MAX_CONN: u32 = 10;
+#[allow(dead_code)]
 const DEFAULT_URL_LEN: usize = 6;
 const DBNAME: &str = "shortener";
 const IPADDR: &str = "172.17.0.2";
@@ -39,7 +40,8 @@ async fn main() -> Result<(), sqlx::Error> {
 
     let app = router
         .route("/", get(root))
-        .route("/:extra", get(derivative));
+        .route("/:extra", get(consume_short_url))
+        .with_state(pool);
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 
@@ -76,6 +78,19 @@ async fn derivative(Path(extra): Path<String>) -> Response {
         ".css" => content_response(contents, HeaderValue::from_static("text/css")),
         _ => not_found_handler().await,
     }
+}
+
+async fn consume_short_url(Path(url): Path<String>, State(pool): State<PgPool>) -> Response {
+    let url_row = match url_db::retrieve_url_obj(url.as_str(), &pool).await {
+        Ok(row) => row,
+        Err(_) => return not_found_handler().await,
+    };
+
+    Response::builder()
+        .status(301) // Status 301: Moved permanently
+        .header(header::LOCATION, url_row.longurl())
+        .body(Body::empty())
+        .unwrap()
 }
 
 fn content_response(contents: Vec<u8>, content_type: HeaderValue) -> Response {
