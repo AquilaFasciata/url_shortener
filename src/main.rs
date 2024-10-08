@@ -10,7 +10,6 @@ use axum::{
     Router,
 };
 use regex::Regex;
-use serde::{de::IntoDeserializer, Deserialize};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tokio::fs;
 
