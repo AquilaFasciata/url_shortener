@@ -1,20 +1,27 @@
 use axum::{
     body::Body,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{
         header::{self, HeaderValue},
         StatusCode,
     },
     response::{Html, IntoResponse, Response},
-    routing::get,
+    routing::{get, post},
     Router,
 };
 use regex::Regex;
+use serde::{de::IntoDeserializer, Deserialize};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tokio::fs;
 
 mod url_db;
 mod user;
+
+#[derive(Deserialize, Debug)]
+struct TestPost {
+    email: String,
+    name: String,
+}
 
 // This is only for development -- will move out to env variable or conf file.
 const USER: &str = "postgres";
@@ -41,11 +48,17 @@ async fn main() -> Result<(), sqlx::Error> {
     let app = router
         .route("/", get(root))
         .route("/:extra", get(consume_short_url))
-        .with_state(pool);
+        .with_state(pool)
+        .route("/", post(print_req));
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 
     Ok(())
+}
+
+async fn print_req(body: String) {
+    let params: TestPost = serde_html_form::from_str(body.as_str()).unwrap();
+    println!("{:#?}", params);
 }
 
 async fn root() -> Response {

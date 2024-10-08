@@ -1,26 +1,28 @@
 <!DOCTYPE html>
 <html>
-	<head>
-		<script src="https://unpkg.com/htmx.org@2.0.2" integrity="sha384-Y7hw+L/jvKeWIRRkqWYfPcvVxHzVzn5REgzbawhxAuQGwX1XWe70vji+VSeHOThJ" crossorigin="anonymous"></script>
-		<script src="https://livejs.com/live.js"></script>
-		<title>Home Page</title>
-		<link rel="stylesheet" type="text/css" href="index.css">
-	</head>
-	<body>
-		<div id="nav">
-			<object width="100%" type="text/html" data="navbar.html"></object>
-		</div>
-		<div id="main">
-			
-		</div>
-		<!--		<form name="form" id="login">
-			<label for="email">Email:</label>
-			<input type="email" name="email" placeholder="thomas@jefferson.com">
-			<label for="name">Name:</label>
-			<input type="text" name="name" placeholder="Thomas Jefferson">
-		</form>
-		<script>
-			-->
-		</script>
-	</body>
+
+<head>
+	<script src="https://unpkg.com/htmx.org@2.0.2"
+		integrity="sha384-Y7hw+L/jvKeWIRRkqWYfPcvVxHzVzn5REgzbawhxAuQGwX1XWe70vji+VSeHOThJ"
+		crossorigin="anonymous"></script>
+	<title>Home Page</title>
+	<link rel="stylesheet" type="text/css" href="index.css">
+</head>
+
+<body>
+	<div id="nav">
+		<object width="100%" type="text/html" data="navbar.html"></object>
+	</div>
+	<div id="main">
+
+	</div>
+	<form name="form" id="login" method="POST">
+		<label for="email">Email:</label>
+		<input type="email" name="email" placeholder="thomas@jefferson.com">
+		<label for="name">Name:</label>
+		<input type="text" name="name" placeholder="Thomas Jefferson">
+		<input type="submit">
+	</form>
+</body>
+
 </html>
