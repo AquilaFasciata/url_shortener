@@ -50,8 +50,7 @@ async fn main() -> Result<(), sqlx::Error> {
 }
 
 async fn print_req(body: String) {
-    let params: TestPost = serde_html_form::from_str(body.as_str()).unwrap();
-    println!("{:#?}", params);
+    println!("{:#?}", body);
 }
 
 async fn root() -> Response {
