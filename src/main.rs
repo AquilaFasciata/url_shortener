@@ -17,12 +17,6 @@ use tokio::fs;
 mod url_db;
 mod user;
 
-#[derive(Deserialize, Debug)]
-struct TestPost {
-    email: String,
-    name: String,
-}
-
 // This is only for development -- will move out to env variable or conf file.
 const USER: &str = "postgres";
 const PASS: &str = env!(
