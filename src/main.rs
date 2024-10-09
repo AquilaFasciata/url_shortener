@@ -43,7 +43,7 @@ async fn main() -> Result<(), sqlx::Error> {
 
     let app = router
         .route("/", get(root))
-        .route("/:extra", get(consume_short_url))
+        .route("/:extra", get(subdir_handler))
         .with_state(pool.clone())
         .route("/", post(post_new_url))
         .with_state(pool.clone());
@@ -76,7 +76,6 @@ async fn derivative(Path(extra): Path<String>) -> Response {
     if extra.contains("..") {
         return StatusCode::FORBIDDEN.into_response();
     }
-    println!("Retriving file {}", &extra);
     path.push_str(extra.as_str());
     let contents = match fs::read(&path).await {
         Ok(content) => content,
@@ -106,6 +105,17 @@ async fn consume_short_url(Path(url): Path<String>, State(pool): State<PgPool>) 
         .header(header::LOCATION, url_row.long_url())
         .body(Body::empty())
         .unwrap()
+}
+
+async fn subdir_handler(Path(path): Path<String>, State(pool): State<PgPool>) -> Response {
+    let split = match path.split('.').last() {
+        Some(ext) => ext,
+        None => return not_found_handler().await,
+    };
+    if split == "html" || split == "css" {
+        return derivative(Path(path)).await;
+    }
+    return consume_short_url(Path(path), State(pool)).await;
 }
 
 fn content_response(contents: Vec<u8>, content_type: HeaderValue) -> Response {
