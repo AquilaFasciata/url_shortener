@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+
 use axum::{
-    body::Body,
-    extract::{Path, Query, State},
+    body::{Body, Bytes},
+    debug_handler,
+    extract::{Path, State},
     http::{
         header::{self, HeaderValue},
         StatusCode,
@@ -41,16 +44,23 @@ async fn main() -> Result<(), sqlx::Error> {
     let app = router
         .route("/", get(root))
         .route("/:extra", get(consume_short_url))
-        .with_state(pool)
-        .route("/", post(print_req));
+        .with_state(pool.clone())
+        .route("/", post(print_req))
+        .with_state(pool.clone());
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 
     Ok(())
 }
 
-async fn print_req(body: String) {
-    println!("{:#?}", body);
+#[debug_handler]
+async fn print_req(State(pool): State<sqlx::PgPool>, body: Bytes) -> Response<Body> {
+    let longurl: HashMap<String, String> =
+        serde_html_form::from_bytes(&body).expect("Error deserializing form response");
+    let new_url = url_db::create_url(&longurl["url"], None, &pool)
+        .await
+        .unwrap();
+    new_url.clone_short_url().into_response()
 }
 
 async fn root() -> Response {
@@ -93,7 +103,7 @@ async fn consume_short_url(Path(url): Path<String>, State(pool): State<PgPool>) 
 
     Response::builder()
         .status(301) // Status 301: Moved permanently
-        .header(header::LOCATION, url_row.longurl())
+        .header(header::LOCATION, url_row.long_url())
         .body(Body::empty())
         .unwrap()
 }

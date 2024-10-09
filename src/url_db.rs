@@ -7,7 +7,7 @@ use rand::{
 use sqlx::{postgres::PgQueryResult, FromRow};
 use std::{result::Result, str};
 
-#[derive(FromRow, Debug)]
+#[derive(FromRow, Debug, Clone)]
 #[allow(dead_code)]
 pub struct UrlRow {
     // If fields are updated, update UrlRowIterator
@@ -70,8 +70,14 @@ impl UrlRow {
     pub fn id(&self) -> i64 {
         self.id
     }
-    pub fn longurl(&self) -> &String {
+    pub fn long_url(&self) -> &String {
         &self.longurl
+    }
+    pub fn short_url(&self) -> &String {
+        &self.shorturl
+    }
+    pub fn clone_short_url(&self) -> String {
+        self.shorturl.clone()
     }
 }
 
@@ -105,9 +111,8 @@ pub async fn create_url(
     // Checking if there is a successful URL generated from uuid and generating random if there are
     // collisions
     if short_url.is_empty() {
-        let mut rng = thread_rng();
         loop {
-            short_url = Alphanumeric.sample_string(&mut rng, DEFAULT_URL_LEN);
+            short_url = Alphanumeric.sample_string(&mut thread_rng(), DEFAULT_URL_LEN);
             let req_result = retrieve_url(&short_url, connection_pool).await;
             // If there is a response that is empty (no long url) or error (there is no applicable
             // row) then break from the loop (new url found isn't being used)

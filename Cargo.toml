@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 askama = "0.12.1"
-axum = "0.7.5"
+axum = { version = "0.7.5", features = ["macros"] }
 base64 = "0.22.1"
 hex = "0.4.3"
 hex-literal = "0.4.1"
