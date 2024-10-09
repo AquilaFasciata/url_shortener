@@ -107,6 +107,9 @@ async fn consume_short_url(Path(url): Path<String>, State(pool): State<PgPool>) 
         .unwrap()
 }
 
+/// This theoretically handles all of the incoming requests. If it matches a file extention (html
+/// and css at the moment) then it returns that from the server. Otherwise, it will assume it is a
+/// short url and send it to the handler.
 async fn subdir_handler(Path(path): Path<String>, State(pool): State<PgPool>) -> Response {
     let split = match path.split('.').last() {
         Some(ext) => ext,
