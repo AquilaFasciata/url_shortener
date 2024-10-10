@@ -15,6 +15,7 @@ use axum::{
 use regex::Regex;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tokio::fs;
+use tracing::{debug, Level};
 
 mod url_db;
 mod user;
@@ -33,6 +34,16 @@ const DBNAME: &str = "shortener";
 const IPADDR: &str = "172.17.0.2";
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
+    let subscriber = tracing_subscriber::fmt()
+        .with_max_level(Level::DEBUG)
+        .compact()
+        .with_thread_ids(true)
+        .with_level(true)
+        .pretty()
+        .finish();
+    let _ = tracing::subscriber::set_global_default(subscriber)
+        .map_err(|_err| eprintln!("Error setting subscriber!"));
+
     let router = Router::new();
     let url = format!("postgres://{USER}:{PASS}@{IPADDR}/{DBNAME}");
     // This pool is to be used throughout
@@ -111,14 +122,19 @@ async fn consume_short_url(Path(url): Path<String>, State(pool): State<PgPool>) 
 /// and css at the moment) then it returns that from the server. Otherwise, it will assume it is a
 /// short url and send it to the handler.
 async fn subdir_handler(Path(path): Path<String>, State(pool): State<PgPool>) -> Response {
+    const FILE_EXTENTIONS: [&str; 8] = ["html", "css", "ico", "png", "jpg", "webp", "xml", "csv"];
     let split = match path.split('.').last() {
         Some(ext) => ext,
         None => return not_found_handler().await,
     };
-    if split == "html" || split == "css" {
+    debug!("The file extention is {split}");
+    if FILE_EXTENTIONS.contains(&split) {
+        debug!("Loading file at {path}");
         return derivative(Path(path)).await;
+    } else {
+        debug!("Redirecting user based on db result for {path}");
+        return consume_short_url(Path(path), State(pool)).await;
     }
-    return consume_short_url(Path(path), State(pool)).await;
 }
 
 fn content_response(contents: Vec<u8>, content_type: HeaderValue) -> Response {
