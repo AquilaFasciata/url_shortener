@@ -5,6 +5,7 @@
 	<script src="https://unpkg.com/htmx.org@2.0.2"
 		integrity="sha384-Y7hw+L/jvKeWIRRkqWYfPcvVxHzVzn5REgzbawhxAuQGwX1XWe70vji+VSeHOThJ"
 		crossorigin="anonymous"></script>
+	<script src="https://livejs.com/live.js" crossorigin="anonymous"></script>
 	<title>Home Page</title>
 	<link rel="stylesheet" type="text/css" href="index.css">
 </head>
@@ -14,7 +15,7 @@
 		<object width="100%" type="text/html" data="navbar.html"></object>
 	</div>
 	<div id="main">
-		<form id="url-input" method="POST">
+		<form id="url-input" hx-post="/">
 			<input type="text" name="url" placeholder="https://example.com">
 			<button type="submit">Submit URL</button>
 		</form>

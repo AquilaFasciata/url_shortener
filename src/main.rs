@@ -39,7 +39,6 @@ async fn main() -> Result<(), sqlx::Error> {
         .compact()
         .with_thread_ids(true)
         .with_level(true)
-        .pretty()
         .finish();
     let _ = tracing::subscriber::set_global_default(subscriber)
         .map_err(|_err| eprintln!("Error setting subscriber!"));
