@@ -2,6 +2,7 @@
 <html>
 
 <head>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<script src="https://livejs.com/live.js" crossorigin="anonymous"></script>
 	<script src="https://unpkg.com/htmx.org@2.0.2"
 		integrity="sha384-Y7hw+L/jvKeWIRRkqWYfPcvVxHzVzn5REgzbawhxAuQGwX1XWe70vji+VSeHOThJ"
@@ -17,10 +18,10 @@
 	<div id="main">
 		<form id="url-input" hx-post="/">
 			<div>
-				<div>
+				<div id="input-box-div">
 					<input type="text" name="url" id="long_url_input" placeholder="https://example.com">
 				</div>
-				<div>
+				<div id="submit-button-div">
 					<button type="submit">Submit URL</button>
 				</div>
 			</div>
