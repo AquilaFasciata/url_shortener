@@ -13,7 +13,14 @@ div#main {
 }
 
 #long_url_input {
+	width: 90%;
 	border-radius: 1.0em;
 	padding: 0.3em;
 	text-align: center;
+}
+
+#url-input div {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
 }
