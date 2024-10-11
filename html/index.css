@@ -5,8 +5,15 @@
 body {
 	margin: 0;
 	padding: 0;
+	background: #515151;
 }
 
 div#main {
 	padding: 0.8em;
+}
+
+#long_url_input {
+	border-radius: 1.0em;
+	padding: 0.3em;
+	text-align: center;
 }
