@@ -121,7 +121,18 @@ async fn consume_short_url(Path(url): Path<String>, State(pool): State<PgPool>) 
 /// and css at the moment) then it returns that from the server. Otherwise, it will assume it is a
 /// short url and send it to the handler.
 async fn subdir_handler(Path(path): Path<String>, State(pool): State<PgPool>) -> Response {
-    const FILE_EXTENTIONS: [&str; 8] = ["html", "css", "ico", "png", "jpg", "webp", "xml", "csv"];
+    const FILE_EXTENTIONS: [&str; 10] = [
+        "html",
+        "css",
+        "ico",
+        "png",
+        "jpg",
+        "webp",
+        "xml",
+        "csv",
+        "ico",
+        "webmanifest",
+    ];
     let split = match path.split('.').last() {
         Some(ext) => ext,
         None => return not_found_handler().await,
