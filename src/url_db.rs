@@ -1,4 +1,5 @@
 use super::DEFAULT_URL_LEN;
+use askama::Template;
 use base64::{engine::general_purpose, prelude::*};
 use rand::{
     distributions::{Alphanumeric, DistString},
@@ -7,7 +8,8 @@ use rand::{
 use sqlx::{postgres::PgQueryResult, FromRow};
 use std::{result::Result, str};
 
-#[derive(FromRow, Debug, Clone)]
+#[derive(FromRow, Debug, Clone, Template)]
+#[template(path = "url-table-row.html")]
 #[allow(dead_code)]
 pub struct UrlRow {
     // If fields are updated, update UrlRowIterator
