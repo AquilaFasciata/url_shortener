@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use askama::Template;
 use axum::{
     body::{Body, Bytes},
     debug_handler,
@@ -70,7 +71,7 @@ async fn post_new_url(State(pool): State<sqlx::PgPool>, body: Bytes) -> Response
     let new_url = url_db::create_url(&longurl["url"], None, &pool)
         .await
         .unwrap();
-    new_url.clone_short_url().into_response()
+    new_url.render().unwrap().into_response()
 }
 
 async fn root() -> Response {
