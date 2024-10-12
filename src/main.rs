@@ -18,6 +18,7 @@ use sqlx::{postgres::PgPoolOptions, PgPool};
 use tokio::fs;
 use tracing::{debug, Level};
 
+mod form_verification;
 mod url_db;
 mod user;
 
