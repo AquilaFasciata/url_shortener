@@ -18,6 +18,7 @@ use sqlx::{postgres::PgPoolOptions, PgPool};
 use tokio::fs;
 use tracing::{debug, Level};
 
+mod preferences;
 mod url_db;
 mod user;
 
@@ -57,8 +58,7 @@ async fn main() -> Result<(), sqlx::Error> {
         .route("/:extra", get(subdir_handler))
         .with_state(pool.clone())
         .route("/", post(post_new_url))
-        .with_state(pool.clone())
-        .route("/verify/url", post(form_verification::is_valid_url));
+        .with_state(pool.clone());
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 
