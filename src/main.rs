@@ -50,7 +50,13 @@ async fn main() -> Result<(), sqlx::Error> {
         .map_err(|_err| eprintln!("Error setting subscriber!"));
 
     let router = Router::new();
-    let url = format!("postgres://{USER}:{PASS}@{IPADDR}/{DBNAME}");
+    let url = format!(
+        "postgres://{}:{}@{}/{}",
+        prefs.db_user(),
+        prefs.db_pass(),
+        prefs.db_ip(),
+        prefs.db_name()
+    );
     // This pool is to be used throughout
     let pool = PgPoolOptions::new()
         .max_connections(MAX_CONN)
