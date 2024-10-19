@@ -13,8 +13,10 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use preferences::Preferences;
 use regex::Regex;
 use sqlx::{postgres::PgPoolOptions, PgPool};
+use std::sync::OnceLock;
 use tokio::fs;
 use tracing::{debug, Level};
 
@@ -34,8 +36,10 @@ const MAX_CONN: u32 = 10;
 const DEFAULT_URL_LEN: usize = 6;
 const DBNAME: &str = "shortener";
 const IPADDR: &str = "172.17.0.2";
+
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
+    let prefs = Preferences::load_config(".");
     let subscriber = tracing_subscriber::fmt()
         .with_max_level(Level::DEBUG)
         .compact()

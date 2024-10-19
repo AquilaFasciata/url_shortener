@@ -3,11 +3,12 @@ use std::fs;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
-struct Preferences {
+pub struct Preferences {
     domain_name: String,
     http_ip: String,
     port: u32,
     db_ip: String,
+    db_name: String,
     db_user: String,
     db_pass: String,
     db_port: u32,
@@ -36,11 +37,10 @@ impl Preferences {
     pub fn db_pool_size(&self) -> u32 {
         self.db_pool_size
     }
-}
-
-pub fn load_config(path: String) -> Preferences {
-    let file_buff = fs::read_to_string(path).expect("Unable to read configuration file");
-    toml::from_str(file_buff.as_str()).expect("Unable to parse configuration file. {}")
+    pub fn load_config(path: &str) -> Self {
+        let file_buff = fs::read_to_string(path).expect("Unable to read configuration file");
+        toml::from_str(file_buff.as_str()).expect("Unable to parse configuration file. {}")
+    }
 }
 
 fn create_default_config(path: String) -> Result<Preferences, std::io::Error> {
@@ -49,6 +49,7 @@ fn create_default_config(path: String) -> Result<Preferences, std::io::Error> {
         http_ip: String::from("127.0.0.1"),
         port: 8080,
         db_ip: String::from("127.0.0.1"),
+        db_name: String::from("shortener"),
         db_user: String::from("postgres"),
         db_pass: String::from("THISISVERYBAD PLEASE CHANGE ME"),
         db_port: 5432,
