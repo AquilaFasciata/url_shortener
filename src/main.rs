@@ -16,26 +16,12 @@ use axum::{
 use preferences::Preferences;
 use regex::Regex;
 use sqlx::{postgres::PgPoolOptions, PgPool};
-use std::sync::OnceLock;
 use tokio::fs;
 use tracing::{debug, Level};
 
 mod preferences;
 mod url_db;
 mod user;
-
-// This is only for development -- will move out to env variable or conf file.
-const USER: &str = "postgres";
-const PASS: &str = env!(
-    "db_pass",
-    "Please set db_pass env variable \
-    with your PostgreSQL password"
-);
-const MAX_CONN: u32 = 10;
-#[allow(dead_code)]
-const DEFAULT_URL_LEN: usize = 6;
-const DBNAME: &str = "shortener";
-const IPADDR: &str = "172.17.0.2";
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
@@ -59,7 +45,7 @@ async fn main() -> Result<(), sqlx::Error> {
     );
     // This pool is to be used throughout
     let pool = PgPoolOptions::new()
-        .max_connections(MAX_CONN)
+        .max_connections(prefs.db_pool_size())
         .connect(url.as_str())
         .await?;
 
@@ -76,12 +62,24 @@ async fn main() -> Result<(), sqlx::Error> {
 }
 
 #[debug_handler]
-async fn post_new_url(State(pool): State<sqlx::PgPool>, body: Bytes) -> Response<Body> {
+async fn post_new_url(
+    State(pool): State<sqlx::PgPool>,
+    prefs: Preferences,
+    body: Bytes,
+) -> Response<Body> {
     let longurl: HashMap<String, String> =
         serde_html_form::from_bytes(&body).expect("Error deserializing form response");
-    let new_url = url_db::create_url(&longurl["url"], None, &pool)
-        .await
-        .unwrap();
+    let new_url = url_db::create_url(
+        &longurl["url"],
+        None,
+        &pool,
+        prefs
+            .url_len()
+            .try_into()
+            .expect("Error converting url_len to usize. {}"),
+    )
+    .await
+    .unwrap();
     new_url.render().unwrap().into_response()
 }
 

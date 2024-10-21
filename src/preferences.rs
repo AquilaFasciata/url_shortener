@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct Preferences {
+    url_len: i64,
     domain_name: String,
     http_ip: String,
     port: u32,
@@ -40,6 +41,9 @@ impl Preferences {
     pub fn db_name(&self) -> &String {
         &self.db_name
     }
+    pub fn url_len(&self) -> i64 {
+        self.url_len
+    }
     pub fn load_config(path: &str) -> Self {
         let file_buff = fs::read_to_string(path).expect("Unable to read configuration file");
         toml::from_str(file_buff.as_str()).expect("Unable to parse configuration file. {}")
@@ -48,6 +52,7 @@ impl Preferences {
 
 fn create_default_config(path: String) -> Result<Preferences, std::io::Error> {
     let new_pref = Preferences {
+        url_len: 6,
         domain_name: String::from("localhost"),
         http_ip: String::from("127.0.0.1"),
         port: 8080,

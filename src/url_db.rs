@@ -1,4 +1,3 @@
-use super::DEFAULT_URL_LEN;
 use askama::Template;
 use base64::{engine::general_purpose, prelude::*};
 use rand::{
@@ -88,12 +87,13 @@ pub async fn create_url(
     long_url: &str,
     user_id: Option<i64>,
     connection_pool: &sqlx::PgPool,
+    url_len: usize,
 ) -> Result<UrlRow, sqlx::Error> {
     let temp_long = gen_url_longword(long_url);
     let mut short_url = String::new();
 
     // Cycle through intil there is a window that is unused
-    for keyword in temp_long.windows(DEFAULT_URL_LEN) {
+    for keyword in temp_long.windows(url_len) {
         let keyword_str =
             str::from_utf8(keyword).expect("Error parsing str. This shouldn't be possible!");
         match retrieve_url(keyword_str, connection_pool).await {
@@ -114,7 +114,7 @@ pub async fn create_url(
     // collisions
     if short_url.is_empty() {
         loop {
-            short_url = Alphanumeric.sample_string(&mut thread_rng(), DEFAULT_URL_LEN);
+            short_url = Alphanumeric.sample_string(&mut thread_rng(), url_len);
             let req_result = retrieve_url(&short_url, connection_pool).await;
             // If there is a response that is empty (no long url) or error (there is no applicable
             // row) then break from the loop (new url found isn't being used)
@@ -205,31 +205,31 @@ async fn url_db_create(new_row: &UrlRow, pool: &sqlx::PgPool) -> Result<i64, sql
 mod tests {
     use sqlx::{postgres::PgPoolOptions, PgPool, Postgres};
 
+    use crate::preferences::Preferences;
+
     use super::*;
 
-    const USER: &str = "postgres";
-    const PASS: &str = env!(
-        "db_pass",
-        "Please set db_pass env variable \
-        with your PostgreSQL password"
-    );
-    const MAX_CONN: u32 = 10;
     static mut TEST_SHORT: String = String::new();
 
-    async fn pool_init() -> PgPool {
-        let conn_url = format!("postgres://{USER}:{PASS}@172.17.0.2/testdb");
+    async fn pool_init() -> (PgPool, Preferences) {
+        let prefs = Preferences::load_config("./config.toml");
+        let conn_url = format!(
+            "postgres://{}:{}@172.17.0.2/testdb",
+            prefs.db_user(),
+            prefs.db_pass()
+        );
         let pool = PgPoolOptions::new()
-            .max_connections(MAX_CONN)
+            .max_connections(prefs.db_pool_size())
             .connect(&conn_url)
             .await
             .expect("Couldn't create connection pool. Are your credentials correct?");
 
-        return pool;
+        return (pool, prefs);
     }
 
     #[sqlx::test]
     async fn test_make_url() {
-        let pool = pool_init().await;
+        let (pool, _prefs) = pool_init().await;
         let short_row: UrlRow = create_url("https://example.com", None, &pool)
             .await
             .unwrap();
@@ -247,7 +247,7 @@ mod tests {
 
     #[sqlx::test]
     async fn test_retrieve_url() {
-        let pool = pool_init().await;
+        let (pool, prefs) = pool_init().await;
 
         let url_row: UrlRow;
         unsafe {
