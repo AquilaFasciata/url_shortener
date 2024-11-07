@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use askama::Template;
 use axum::{
     body::{Body, Bytes},
+    debug_handler,
     extract::{Path, State},
     http::{
         header::{self, HeaderValue},
@@ -54,16 +55,15 @@ async fn main() -> Result<(), sqlx::Error> {
         .with_state(pool.clone())
         .route("/", post(post_new_url))
         .with_state(pool.clone())
-        .with_state(prefs);
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 
     Ok(())
 }
 
+#[debug_handler]
 async fn post_new_url(
     State(pool): State<sqlx::PgPool>,
-    State(prefs): State<Preferences>,
     body: Bytes,
 ) -> Response<Body> {
     let longurl: HashMap<String, String> =

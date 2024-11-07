@@ -133,29 +133,27 @@ pub async fn delete_user_from_db(id: i64, pool: &sqlx::PgPool) -> Result<u64, sq
 
 #[cfg(test)]
 mod tests {
-    use sqlx::postgres::PgPoolOptions;
+    use crate::preferences::Preferences;
+    use sqlx::{postgres::PgPoolOptions, PgPool};
     use tracing::Level;
     use zeroize::Zeroizing;
 
     use super::*;
 
-    const USER: &str = "postgres";
-    const PASS: &str = env!(
-        "db_pass",
-        "Please set db_pass env variable \
-        with your PostgreSQL password"
-    );
-    const MAX_CONN: u32 = 10;
-
-    async fn pool_init() -> sqlx::PgPool {
-        let conn_url = format!("postgres://{USER}:{PASS}@172.17.0.2/testdb");
+    async fn pool_init() -> (PgPool, Preferences) {
+        let prefs = Preferences::load_config("./config.toml");
+        let conn_url = format!(
+            "postgres://{}:{}@172.17.0.2/testdb",
+            prefs.db_user(),
+            prefs.db_pass()
+        );
         let pool = PgPoolOptions::new()
-            .max_connections(MAX_CONN)
+            .max_connections(prefs.db_pool_size())
             .connect(&conn_url)
             .await
             .expect("Couldn't create connection pool. Are your credentials correct?");
 
-        return pool;
+        return (pool, prefs);
     }
 
     impl UserRow {
@@ -182,7 +180,7 @@ mod tests {
 
     #[sqlx::test]
     async fn create_user() {
-        let pool = pool_init().await;
+        let (pool, _) = pool_init().await;
 
         let user = new_user(
             String::from("test"),

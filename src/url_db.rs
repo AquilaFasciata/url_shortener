@@ -267,7 +267,7 @@ mod tests {
 
     #[sqlx::test]
     async fn test_delete_url() {
-        let pool = pool_init().await;
+        let (pool, _) = pool_init().await;
 
         sqlx::query("INSERT INTO urls (id, shorturl, longurl, created_by, clicks) VALUES (1, 'test', 'https://example.com', NULL, 0);")
             .execute(&pool)
@@ -279,14 +279,14 @@ mod tests {
 
     #[sqlx::test]
     async fn test_delete_nonexistand_url() {
-        let pool = pool_init().await;
+        let (pool, _) = pool_init().await;
 
         delete_url(1, &pool).await.expect("Error deleting row");
     }
 
     #[sqlx::test]
     async fn test_retrieve_enonexistant_url() {
-        let pool = pool_init().await;
+        let (pool, _) = pool_init().await;
 
         let url = "247eadf89a518526cd34fd24aaaaaaaaaa";
 
