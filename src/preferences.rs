@@ -44,14 +44,17 @@ impl Preferences {
     pub fn url_len(&self) -> usize {
         self.url_len
     }
-    pub fn load_config(path: &str) -> Self {
+    pub fn load_config(path: &str) -> Result<Self, std::io::Error> {
         let path = path.trim_matches('/').to_owned() + "/config.toml";
-        let file_buff = fs::read_to_string(path).expect("Unable to read configuration file");
-        toml::from_str(file_buff.as_str()).expect("Unable to parse configuration file. {}")
+        let file_buff = match fs::read_to_string(path.as_str()) {
+            Ok(buff) => buff,
+            Err(_) => return create_default_config(path.as_str()),
+        };
+        Ok(toml::from_str(file_buff.as_str()).expect("Unable to parse configuration file. {}"))
     }
 }
 
-fn create_default_config(path: String) -> Result<Preferences, std::io::Error> {
+fn create_default_config(path: &str) -> Result<Preferences, std::io::Error> {
     let new_pref = Preferences {
         url_len: 6,
         domain_name: String::from("localhost"),
