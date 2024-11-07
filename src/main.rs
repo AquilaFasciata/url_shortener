@@ -64,6 +64,7 @@ async fn main() -> Result<(), sqlx::Error> {
 #[debug_handler]
 async fn post_new_url(
     State(pool): State<sqlx::PgPool>,
+    prefs: Preferences,
     body: Bytes,
 ) -> Response<Body> {
     let longurl: HashMap<String, String> =

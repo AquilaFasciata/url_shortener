@@ -229,8 +229,8 @@ mod tests {
 
     #[sqlx::test]
     async fn test_make_url() {
-        let (pool, _prefs) = pool_init().await;
-        let short_row: UrlRow = create_url("https://example.com", None, &pool)
+        let (pool, prefs) = pool_init().await;
+        let short_row: UrlRow = create_url("https://example.com", None, &pool, prefs.url_len())
             .await
             .unwrap();
 
@@ -247,7 +247,7 @@ mod tests {
 
     #[sqlx::test]
     async fn test_retrieve_url() {
-        let (pool, prefs) = pool_init().await;
+        let (pool, _) = pool_init().await;
 
         let url_row: UrlRow;
         unsafe {

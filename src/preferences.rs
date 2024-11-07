@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct Preferences {
-    url_len: i64,
+    url_len: usize,
     domain_name: String,
     http_ip: String,
     port: u32,
@@ -41,7 +41,7 @@ impl Preferences {
     pub fn db_name(&self) -> &String {
         &self.db_name
     }
-    pub fn url_len(&self) -> i64 {
+    pub fn url_len(&self) -> usize {
         self.url_len
     }
     pub fn load_config(path: &str) -> Self {
