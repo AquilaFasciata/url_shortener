@@ -45,6 +45,7 @@ impl Preferences {
         self.url_len
     }
     pub fn load_config(path: &str) -> Self {
+        let path = path.trim_matches('/').to_owned() + "/config.toml";
         let file_buff = fs::read_to_string(path).expect("Unable to read configuration file");
         toml::from_str(file_buff.as_str()).expect("Unable to parse configuration file. {}")
     }
