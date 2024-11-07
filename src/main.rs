@@ -23,9 +23,14 @@ mod preferences;
 mod url_db;
 mod user;
 
+struct PoolAndPrefs<'a> {
+    pool: &'a PgPool,
+    prefs: &'a Preferences,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
-    let prefs = Preferences::load_config(".");
+    let prefs = Preferences::load_config(".").expect("Error loading configuration. {}");
     let subscriber = tracing_subscriber::fmt()
         .with_max_level(Level::DEBUG)
         .compact()
@@ -49,32 +54,32 @@ async fn main() -> Result<(), sqlx::Error> {
         .connect(url.as_str())
         .await?;
 
-    let pool_pref = (pool, prefs);
+    let pool_and_prefs = PoolAndPrefs {
+        pool: &pool,
+        prefs: &prefs,
+    };
 
     let app = router
         .route("/", get(root))
         .route("/:extra", get(subdir_handler))
-        .with_state(pool_pref.0.clone())
+        .with_state(&pool)
         .route("/", post(post_new_url))
-        .with_state(pool_pref.clone());
+        .with_state(&pool_and_prefs);
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 
     Ok(())
 }
 
-async fn post_new_url(
-    State(pool_pref): State<(sqlx::PgPool, Preferences)>,
-    body: Bytes,
-) -> Response<Body> {
-    let (pool, prefs) = pool_pref;
+async fn post_new_url(State(pool_and_prefs): State<&PoolAndPrefs>, body: Bytes) -> Response<Body> {
     let longurl: HashMap<String, String> =
         serde_html_form::from_bytes(&body).expect("Error deserializing form response");
     let new_url = url_db::create_url(
         &longurl["url"],
         None,
-        &pool,
-        prefs
+        pool_and_prefs.pool,
+        pool_and_prefs
+            .prefs
             .url_len()
             .try_into()
             .expect("Error converting url_len to usize. {}"),
@@ -131,7 +136,7 @@ async fn consume_short_url(Path(url): Path<String>, State(pool): State<PgPool>) 
 /// This theoretically handles all of the incoming requests. If it matches a file extention (html
 /// and css at the moment) then it returns that from the server. Otherwise, it will assume it is a
 /// short url and send it to the handler.
-async fn subdir_handler(Path(path): Path<String>, State(pool): State<PgPool>) -> Response {
+async fn subdir_handler(Path(path): Path<String>, State(pool): State<&PgPool>) -> Response {
     const FILE_EXTENTIONS: [&str; 10] = [
         "html",
         "css",
