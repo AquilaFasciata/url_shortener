@@ -49,24 +49,25 @@ async fn main() -> Result<(), sqlx::Error> {
         .connect(url.as_str())
         .await?;
 
+    let pool_pref = (pool, prefs);
+
     let app = router
         .route("/", get(root))
         .route("/:extra", get(subdir_handler))
-        .with_state(pool.clone())
+        .with_state(pool_pref.0.clone())
         .route("/", post(post_new_url))
-        .with_state(pool.clone())
+        .with_state(pool_pref.clone());
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 
     Ok(())
 }
 
-#[debug_handler]
 async fn post_new_url(
-    State(pool): State<sqlx::PgPool>,
-    prefs: Preferences,
+    State(pool_pref): State<(sqlx::PgPool, Preferences)>,
     body: Bytes,
 ) -> Response<Body> {
+    let (pool, prefs) = pool_pref;
     let longurl: HashMap<String, String> =
         serde_html_form::from_bytes(&body).expect("Error deserializing form response");
     let new_url = url_db::create_url(

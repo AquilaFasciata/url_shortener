@@ -203,7 +203,7 @@ async fn url_db_create(new_row: &UrlRow, pool: &sqlx::PgPool) -> Result<i64, sql
 
 #[cfg(test)]
 mod tests {
-    use sqlx::{postgres::PgPoolOptions, PgPool, Postgres};
+    use sqlx::{postgres::PgPoolOptions, PgPool};
 
     use crate::preferences::Preferences;
 
