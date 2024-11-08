@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use askama::Template;
 use axum::{
     body::{Body, Bytes},
-    debug_handler,
     extract::{Path, State},
     http::{
         header::{self, HeaderValue},
@@ -23,9 +22,15 @@ mod preferences;
 mod url_db;
 mod user;
 
-struct PoolAndPrefs<'a> {
-    pool: &'a PgPool,
-    prefs: &'a Preferences,
+struct PoolAndPrefs {
+    pool: PgPool,
+    prefs: Preferences,
+}
+
+impl PoolAndPrefs {
+    fn pool(&self) -> &PgPool {
+        &self.pool
+    }
 }
 
 #[tokio::main]
@@ -55,14 +60,14 @@ async fn main() -> Result<(), sqlx::Error> {
         .await?;
 
     let pool_and_prefs = PoolAndPrefs {
-        pool: &pool,
-        prefs: &prefs,
+        pool: pool,
+        prefs: prefs,
     };
 
     let app = router
         .route("/", get(root))
         .route("/:extra", get(subdir_handler))
-        .with_state(&pool)
+        .with_state(&pool_and_prefs)
         .route("/", post(post_new_url))
         .with_state(&pool_and_prefs);
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
@@ -71,13 +76,16 @@ async fn main() -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-async fn post_new_url(State(pool_and_prefs): State<&PoolAndPrefs>, body: Bytes) -> Response<Body> {
+async fn post_new_url<'a>(
+    State(pool_and_prefs): State<&'a PoolAndPrefs>,
+    body: Bytes,
+) -> Response<Body> {
     let longurl: HashMap<String, String> =
         serde_html_form::from_bytes(&body).expect("Error deserializing form response");
     let new_url = url_db::create_url(
         &longurl["url"],
         None,
-        pool_and_prefs.pool,
+        pool_and_prefs.pool(),
         pool_and_prefs
             .prefs
             .url_len()
@@ -120,7 +128,7 @@ async fn derivative(Path(extra): Path<String>) -> Response {
     }
 }
 
-async fn consume_short_url(Path(url): Path<String>, State(pool): State<PgPool>) -> Response {
+async fn consume_short_url(Path(url): Path<String>, State(pool): State<&PgPool>) -> Response {
     let url_row = match url_db::retrieve_url_obj(url.as_str(), &pool).await {
         Ok(row) => row,
         Err(_) => return not_found_handler().await,
@@ -136,7 +144,7 @@ async fn consume_short_url(Path(url): Path<String>, State(pool): State<PgPool>) 
 /// This theoretically handles all of the incoming requests. If it matches a file extention (html
 /// and css at the moment) then it returns that from the server. Otherwise, it will assume it is a
 /// short url and send it to the handler.
-async fn subdir_handler(Path(path): Path<String>, State(pool): State<&PgPool>) -> Response {
+async fn subdir_handler(Path(path): Path<String>, State(pool): State<&PoolAndPrefs>) -> Response {
     const FILE_EXTENTIONS: [&str; 10] = [
         "html",
         "css",
@@ -159,7 +167,7 @@ async fn subdir_handler(Path(path): Path<String>, State(pool): State<&PgPool>) -
         return derivative(Path(path)).await;
     } else {
         debug!("Redirecting user based on db result for {path}");
-        return consume_short_url(Path(path), State(pool)).await;
+        return consume_short_url(Path(path), State(&pool.pool())).await;
     }
 }
 
