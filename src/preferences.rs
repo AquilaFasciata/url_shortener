@@ -1,6 +1,7 @@
 use std::fs;
 
 use serde::{Deserialize, Serialize};
+use tracing::error;
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Preferences {
@@ -68,6 +69,7 @@ fn create_default_config(path: &str) -> Result<Preferences, std::io::Error> {
         db_pool_size: 10,
     };
     eprintln!("Using default password. \x1b[1mTHIS MUST BE CHANGED!!!\x1b[0m");
+    error!("Using default password. \x1b[1mTHIS MUST BE CHANGED!!!\x1b[0m");
     fs::write(
         path,
         toml::to_string(&new_pref)

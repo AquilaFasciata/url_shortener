@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use askama::Template;
 use axum::{
@@ -64,20 +64,22 @@ async fn main() -> Result<(), sqlx::Error> {
         prefs: prefs,
     };
 
+    let arc_pool_prefs: Arc<PoolAndPrefs> = Arc::new(pool_and_prefs);
+
     let app = router
         .route("/", get(root))
         .route("/:extra", get(subdir_handler))
-        .with_state(&pool_and_prefs)
+        .with_state(arc_pool_prefs.clone())
         .route("/", post(post_new_url))
-        .with_state(&pool_and_prefs);
+        .with_state(arc_pool_prefs.clone());
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 
     Ok(())
 }
 
-async fn post_new_url<'a>(
-    State(pool_and_prefs): State<&'a PoolAndPrefs>,
+async fn post_new_url(
+    State(pool_and_prefs): State<Arc<PoolAndPrefs>>,
     body: Bytes,
 ) -> Response<Body> {
     let longurl: HashMap<String, String> =
@@ -144,7 +146,10 @@ async fn consume_short_url(Path(url): Path<String>, State(pool): State<&PgPool>)
 /// This theoretically handles all of the incoming requests. If it matches a file extention (html
 /// and css at the moment) then it returns that from the server. Otherwise, it will assume it is a
 /// short url and send it to the handler.
-async fn subdir_handler(Path(path): Path<String>, State(pool): State<&PoolAndPrefs>) -> Response {
+async fn subdir_handler(
+    Path(path): Path<String>,
+    State(pool): State<Arc<PoolAndPrefs>>,
+) -> Response {
     const FILE_EXTENTIONS: [&str; 10] = [
         "html",
         "css",
