@@ -16,7 +16,7 @@ use preferences::Preferences;
 use regex::Regex;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tokio::fs;
-use tracing::{debug, Level};
+use tracing::{debug, info, Level};
 
 mod preferences;
 mod url_db;
@@ -60,8 +60,8 @@ async fn main() -> Result<(), sqlx::Error> {
         .await?;
 
     let pool_and_prefs = PoolAndPrefs {
-        pool: pool,
-        prefs: prefs,
+        pool,
+        prefs: prefs.clone(),
     };
 
     let arc_pool_prefs: Arc<PoolAndPrefs> = Arc::new(pool_and_prefs);
@@ -73,6 +73,11 @@ async fn main() -> Result<(), sqlx::Error> {
         .route("/", post(post_new_url))
         .with_state(arc_pool_prefs.clone());
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
+    info!(
+        "Listening on {}:{} for connections!",
+        prefs.http_ip(),
+        prefs.port()
+    );
     axum::serve(listener, app).await.unwrap();
 
     Ok(())

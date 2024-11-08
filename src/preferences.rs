@@ -45,6 +45,9 @@ impl Preferences {
     pub fn url_len(&self) -> usize {
         self.url_len
     }
+    pub fn http_ip(&self) -> &String {
+        &self.http_ip
+    }
     pub fn load_config(path: &str) -> Result<Self, std::io::Error> {
         let path = path.trim_matches('/').to_owned() + "/config.toml";
         let file_buff = match fs::read_to_string(path.as_str()) {
