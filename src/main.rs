@@ -101,7 +101,18 @@ async fn post_new_url(
     )
     .await
     .unwrap();
-    new_url.render().unwrap().into_response()
+    let mut rendered_resp = new_url.render().unwrap();
+    rendered_resp
+        .replace(
+            new_url.short_url(),
+            format!(
+                "{}/{}",
+                pool_and_prefs.prefs.domain_name(),
+                new_url.short_url()
+            )
+            .as_str(),
+        )
+        .into_response()
 }
 
 async fn root() -> Response {

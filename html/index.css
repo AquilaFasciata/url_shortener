@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Host+Grotesk:ital,wght@0,300..800;1,300..800&family=SUSE:wght@100..800&display=swap');
+
 #login {
 	display: block;
 }
@@ -57,27 +59,47 @@ div#main {
 	margin: auto;
 	width: 75%;
 	background-color: white;
-	border-collapse: collapse;
+	border-radius: 1.05em;
+	border: none;
 }
 
 #url-table th,
 tr,
 td {
-	transition: ;
+	padding: 0.3em;
+	transition: all 1s ease-in;
+	font-family: 'Host Grotesk', sans-serif;
 }
 
 #url-table th {
-	border-style: solid;
 	border-width: 1px;
 	border-color: black;
 }
 
 #url-table td,
 tr {
-	border-style: solid;
+	text-align: center;
 	border-width: 1px;
+}
+
+#url-table tr {
+	border-left: none;
+	border-right: none;
 }
 
 #replace-htmx-row {
 	display: none;
+}
+
+#url-output-data.htmx-added {
+	opacity: 0;
+}
+
+#url-output-data {
+	opacity: 1;
+	transition: all 1s ease-in;
+}
+
+#url-output-data {
+	transition: all 1s ease-in;
 }

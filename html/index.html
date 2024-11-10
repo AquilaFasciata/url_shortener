@@ -16,7 +16,7 @@
 		<object width="100%" type="text/html" data="navbar.html"></object>
 	</div>
 	<div id="main">
-		<form id="url-input" hx-post="/" hx-target="#replace-htmx-row" hx-swap="outerHTML">
+		<form id="url-input" hx-post="/" hx-target="#replace-htmx-row" hx-swap="outerHTML settle:1s">
 			<div>
 				<div id="input-box-div">
 					<input type="text" name="url" id="long_url_input" placeholder="https://example.com">
@@ -38,8 +38,6 @@
 				</tr>
 				<tr id="replace-htmx-row"></tr>
 			</table>
-			<img src="https://i.pinimg.com/originals/a9/bb/4a/a9bb4a832063a70f771d9d9650ce1dd6.jpg" alt="Dogge"
-				style="height: auto; width: 25%">
 		</div>
 	</div>
 </body>
