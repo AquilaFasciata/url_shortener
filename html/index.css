@@ -4,6 +4,10 @@
 	display: block;
 }
 
+html {
+	background-image: url("4875.jpg");
+}
+
 body {
 	margin: 0;
 	padding: 0;

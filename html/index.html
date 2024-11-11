@@ -3,18 +3,29 @@
 
 <head>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta charset="UTF-8">
+	<link rel="stylesheet" type="text/css" href="index.css">
 	<script src="https://livejs.com/live.js" crossorigin="anonymous"></script>
 	<script src="https://unpkg.com/htmx.org@2.0.2"
 		integrity="sha384-Y7hw+L/jvKeWIRRkqWYfPcvVxHzVzn5REgzbawhxAuQGwX1XWe70vji+VSeHOThJ"
 		crossorigin="anonymous"></script>
-	<title>Home Page</title>
-	<link rel="stylesheet" type="text/css" href="index.css">
+	<title>Home Page - RURLS</title>
+	<div id="nav">
+		<header id="navbar"></header>
+		<script type="module">
+			async function loadNavbar() {
+				const response = await fetch('navbar.html');
+				if (response.ok) {
+					const html = await response.text();
+					document.getElementById('navbar').innerHTML = html;
+				}
+			}
+			loadNavbar();
+		</script>
+	</div>
 </head>
 
 <body>
-	<div id="nav">
-		<object width="100%" type="text/html" data="navbar.html"></object>
-	</div>
 	<div id="main">
 		<form id="url-input" hx-post="/" hx-target="#replace-htmx-row" hx-swap="outerHTML settle:1s">
 			<div>

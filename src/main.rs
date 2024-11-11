@@ -5,8 +5,8 @@ use axum::{
     body::{Body, Bytes},
     extract::{Path, State},
     http::{
-        header::{self, HeaderValue},
-        StatusCode,
+        header::{self, HeaderValue, CONTENT_LENGTH, CONTENT_TYPE},
+        response, HeaderName, StatusCode,
     },
     response::{Html, IntoResponse, Response},
     routing::{get, post},
@@ -16,7 +16,7 @@ use preferences::Preferences;
 use regex::Regex;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tokio::fs;
-use tracing::{debug, field::debug, info, Level};
+use tracing::{debug, info, Level};
 
 mod preferences;
 mod url_db;
@@ -71,6 +71,8 @@ async fn main() -> Result<(), sqlx::Error> {
         .route("/:extra", get(subdir_handler))
         .with_state(arc_pool_prefs.clone())
         .route("/", post(post_new_url))
+        .with_state(arc_pool_prefs.clone())
+        .route("/:extra/:extra", get(subdir_handler))
         .with_state(arc_pool_prefs.clone());
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     info!(
@@ -142,6 +144,30 @@ async fn derivative(Path(extra): Path<String>) -> Response {
     match file_ext.as_str() {
         ".html" => Html::from(contents).into_response(),
         ".css" => content_response(contents, HeaderValue::from_static("text/css")),
+        ".jpg" => {
+            let image = match fs::read(path).await {
+                Ok(img) => img,
+                Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            };
+            response::Builder::new()
+                .status(StatusCode::OK)
+                .header(CONTENT_TYPE, "image/jpeg")
+                .header(CONTENT_LENGTH, image.len())
+                .body(image.into())
+                .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR.into_response())
+        }
+        ".webp" => {
+            let image = match fs::read(path).await {
+                Ok(img) => img,
+                Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+            };
+            response::Builder::new()
+                .status(StatusCode::OK)
+                .header(CONTENT_TYPE, "image/webp")
+                .header(CONTENT_LENGTH, image.len())
+                .body(image.into())
+                .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR.into_response())
+        }
         _ => not_found_handler().await,
     }
 }
