@@ -5,17 +5,23 @@
 }
 
 html {
-	background-image: url("4875.jpg");
+	background-image: url("4875.webp");
+	background-repeat: no-repeat;
+	background-size: 165%;
+	background-position-x: center;
+	background-attachment: fixed;
 }
 
 body {
 	margin: 0;
 	padding: 0;
-	background: #32292F;
 }
 
 div#main {
+	margin: 0.4em;
 	padding: 0.8em;
+	background-color: rgba(1, 1, 1, 0.65);
+	color: #FFFFFF;
 }
 
 #long_url_input {
