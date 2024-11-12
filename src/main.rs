@@ -117,7 +117,7 @@ async fn post_new_url(
 }
 
 async fn root() -> Response {
-    let contents = fs::read("html/index.html").await.unwrap();
+    let contents = fs::read("html/index.html").unwrap();
     let html = Html::from(contents);
     html.into_response()
 }
@@ -216,7 +216,7 @@ fn content_response(contents: Vec<u8>, content_type: HeaderValue) -> Response {
 }
 
 async fn not_found_handler() -> Response {
-    let content = fs::read("html/404.html").await.unwrap();
+    let content = fs::read("html/404.html").unwrap();
     Response::builder()
         .status(StatusCode::NOT_FOUND)
         .body(Body::from(content))
