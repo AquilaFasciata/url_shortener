@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, fs, sync::Arc};
 
 use askama::Template;
 use axum::{
@@ -15,7 +15,6 @@ use axum::{
 use preferences::Preferences;
 use regex::Regex;
 use sqlx::{postgres::PgPoolOptions, PgPool};
-use tokio::fs;
 use tracing::{debug, info, Level};
 
 mod preferences;
@@ -131,7 +130,7 @@ async fn derivative(Path(extra): Path<String>) -> Response {
         return StatusCode::FORBIDDEN.into_response();
     }
     path.push_str(extra.as_str());
-    let contents = match fs::read(&path).await {
+    let contents = match fs::read(&path) {
         Ok(content) => content,
         Err(_) => return not_found_handler().await,
     };
@@ -144,26 +143,17 @@ async fn derivative(Path(extra): Path<String>) -> Response {
     match file_ext.as_str() {
         ".html" => Html::from(contents).into_response(),
         ".css" => content_response(contents, HeaderValue::from_static("text/css")),
-        ".jpg" => {
-            let image = match fs::read(path).await {
+        ".jpg" => image_load(path.as_str(), file_ext.as_str()),
+        ".webp" => image_load(path.as_str(), file_ext.as_str()),
+        // Icos don't have a content type that matches the file ext.
+        ".ico" => {
+            let image = match fs::read(path) {
                 Ok(img) => img,
                 Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
             };
             response::Builder::new()
                 .status(StatusCode::OK)
-                .header(CONTENT_TYPE, "image/jpeg")
-                .header(CONTENT_LENGTH, image.len())
-                .body(image.into())
-                .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR.into_response())
-        }
-        ".webp" => {
-            let image = match fs::read(path).await {
-                Ok(img) => img,
-                Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-            };
-            response::Builder::new()
-                .status(StatusCode::OK)
-                .header(CONTENT_TYPE, "image/webp")
+                .header(CONTENT_TYPE, "image/x-icon")
                 .header(CONTENT_LENGTH, image.len())
                 .body(image.into())
                 .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR.into_response())
@@ -231,4 +221,18 @@ async fn not_found_handler() -> Response {
         .status(StatusCode::NOT_FOUND)
         .body(Body::from(content))
         .expect("Failed to build 404 response")
+}
+
+fn image_load(path: &str, ext: &str) -> Response {
+    let ext = ext.trim_start_matches('.');
+    let image = match fs::read(path) {
+        Ok(img) => img,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
+    response::Builder::new()
+        .status(StatusCode::OK)
+        .header(CONTENT_TYPE, format!("image/{ext}"))
+        .header(CONTENT_LENGTH, image.len())
+        .body(image.into())
+        .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR.into_response())
 }
