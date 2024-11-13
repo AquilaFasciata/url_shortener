@@ -76,7 +76,6 @@ div#main {
 tr,
 td {
 	padding: 0.3em;
-	transition: all 1s ease-in;
 	font-family: 'Host Grotesk', sans-serif;
 }
 
@@ -106,9 +105,5 @@ tr {
 
 #url-output-data {
 	opacity: 1;
-	transition: all 1s ease-in;
-}
-
-#url-output-data {
-	transition: all 1s ease-in;
+	transition: all 0.5s linear;
 }
