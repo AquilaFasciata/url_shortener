@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, net::SocketAddr, sync::Arc};
+use std::{collections::HashMap, error::Error, fs, future::Future, net::SocketAddr, sync::Arc};
 
 use askama::Template;
 use axum::{
@@ -44,6 +44,8 @@ async fn main() -> Result<(), sqlx::Error> {
         .finish();
     let _ = tracing::subscriber::set_global_default(subscriber)
         .map_err(|_err| eprintln!("Error setting subscriber!"));
+
+    if prefs.https_cert_path().is_some() {}
 
     let certs = RustlsConfig::from_pem_file("cert.pem", "key.pem");
 

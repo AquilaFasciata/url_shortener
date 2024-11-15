@@ -15,6 +15,8 @@ pub struct Preferences {
     db_pass: String,
     db_port: u32,
     db_pool_size: u32,
+    https_cert_path: Option<String>,
+    https_key_path: Option<String>,
 }
 
 impl Preferences {
@@ -56,6 +58,12 @@ impl Preferences {
         };
         Ok(toml::from_str(file_buff.as_str()).expect("Unable to parse configuration file. {}"))
     }
+    pub fn https_cert_path(&self) -> &Option<String> {
+        &self.https_cert_path
+    }
+    pub fn https_key_path(&self) -> &Option<String> {
+        &self.https_key_path
+    }
 }
 
 fn create_default_config(path: &str) -> Result<Preferences, std::io::Error> {
@@ -70,6 +78,8 @@ fn create_default_config(path: &str) -> Result<Preferences, std::io::Error> {
         db_pass: String::from("THISISVERYBAD PLEASE CHANGE ME"),
         db_port: 5432,
         db_pool_size: 10,
+        https_cert_path: None,
+        https_key_path: None,
     };
     eprintln!("Using default password. \x1b[1mTHIS MUST BE CHANGED!!!\x1b[0m");
     error!("Using default password. \x1b[1mTHIS MUST BE CHANGED!!!\x1b[0m");
