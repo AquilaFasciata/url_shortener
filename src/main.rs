@@ -8,9 +8,9 @@ use axum::{
         header::{self, HeaderValue, CONTENT_LENGTH, CONTENT_TYPE},
         response, StatusCode,
     },
-    response::{Html, IntoResponse, Redirect, Response},
+    response::{Html, IntoResponse, Response},
     routing::{get, post},
-    Router, ServiceExt,
+    Router,
 };
 use axum_server::tls_rustls::RustlsConfig;
 use preferences::Preferences;
@@ -45,7 +45,7 @@ async fn main() -> Result<(), sqlx::Error> {
     let _ = tracing::subscriber::set_global_default(subscriber)
         .map_err(|_err| eprintln!("Error setting subscriber!"));
 
-    let mut certs = RustlsConfig::from_pem_file("cert.pem", "key.pem");
+    let certs = RustlsConfig::from_pem_file("cert.pem", "key.pem");
 
     let router = Router::new();
     let url = format!(
@@ -63,7 +63,7 @@ async fn main() -> Result<(), sqlx::Error> {
     let (certs, pool) = tokio::join!(certs, pool);
 
     let pool_and_prefs = PoolAndPrefs {
-        pool: pool.unwrap(),
+        pool: pool.expect("Error creating connection pool. {}"),
         prefs: prefs.clone(),
     };
 
