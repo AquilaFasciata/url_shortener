@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fs, sync::Arc};
+use std::{collections::HashMap, fs, net::SocketAddr, sync::Arc};
 
 use askama::Template;
 use axum::{
@@ -6,12 +6,13 @@ use axum::{
     extract::{Path, State},
     http::{
         header::{self, HeaderValue, CONTENT_LENGTH, CONTENT_TYPE},
-        response, HeaderName, StatusCode,
+        response, StatusCode,
     },
-    response::{Html, IntoResponse, Response},
+    response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Router,
+    Router, ServiceExt,
 };
+use axum_server::tls_rustls::RustlsConfig;
 use preferences::Preferences;
 use regex::Regex;
 use sqlx::{postgres::PgPoolOptions, PgPool};
@@ -44,6 +45,8 @@ async fn main() -> Result<(), sqlx::Error> {
     let _ = tracing::subscriber::set_global_default(subscriber)
         .map_err(|_err| eprintln!("Error setting subscriber!"));
 
+    let mut certs = RustlsConfig::from_pem_file("cert.pem", "key.pem");
+
     let router = Router::new();
     let url = format!(
         "postgres://{}:{}@{}/{}",
@@ -55,11 +58,12 @@ async fn main() -> Result<(), sqlx::Error> {
     // This pool is to be used throughout
     let pool = PgPoolOptions::new()
         .max_connections(prefs.db_pool_size())
-        .connect(url.as_str())
-        .await?;
+        .connect(url.as_str());
+
+    let (certs, pool) = tokio::join!(certs, pool);
 
     let pool_and_prefs = PoolAndPrefs {
-        pool,
+        pool: pool.unwrap(),
         prefs: prefs.clone(),
     };
 
@@ -73,13 +77,17 @@ async fn main() -> Result<(), sqlx::Error> {
         .with_state(arc_pool_prefs.clone())
         .route("/:extra/:extra", get(subdir_handler))
         .with_state(arc_pool_prefs.clone());
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
+    let address = SocketAddr::from(([127, 0, 0, 1], u16::try_from(prefs.port()).unwrap()));
     info!(
         "Listening on {}:{} for connections!",
         prefs.http_ip(),
         prefs.port()
     );
-    axum::serve(listener, app).await.unwrap();
+
+    axum_server::bind_rustls(address, certs.unwrap())
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
 
     Ok(())
 }
