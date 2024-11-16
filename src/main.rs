@@ -1,4 +1,4 @@
-use std::{collections::HashMap, error::Error, fs, future::Future, io, net::SocketAddr, sync::Arc};
+use std::{collections::HashMap, fs, net::SocketAddr, sync::Arc};
 
 use askama::Template;
 use axum::{
@@ -48,8 +48,8 @@ async fn main() -> Result<(), sqlx::Error> {
     let certs;
     if prefs.https_cert_path().is_some() {
         certs = Some(RustlsConfig::from_pem_file(
-            prefs.https_cert_path().unwrap(),
-            prefs.https_key_path().unwrap(),
+            prefs.https_cert_path().as_ref().unwrap(),
+            prefs.https_key_path().as_ref().unwrap(),
         ));
     } else {
         certs = None;
@@ -94,10 +94,20 @@ async fn main() -> Result<(), sqlx::Error> {
         prefs.port()
     );
 
-    axum_server::bind_rustls(address, certs.unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    if certs.is_ok() {
+        axum_server::bind_rustls(address, certs.unwrap())
+            .serve(app.into_make_service())
+            .await
+            .unwrap();
+    } else {
+        let listener =
+            tokio::net::TcpListener::bind(format!("{}:{}", prefs.http_ip(), prefs.port()).as_str())
+                .await
+                .unwrap();
+        axum::serve(listener, app.into_make_service())
+            .await
+            .unwrap();
+    }
 
     Ok(())
 }
@@ -120,18 +130,11 @@ async fn post_new_url(
     )
     .await
     .unwrap();
-    let rendered_resp = new_url.render().unwrap();
-    rendered_resp
-        .replace(
-            new_url.short_url(),
-            format!(
-                "{}/{}",
-                pool_and_prefs.prefs.domain_name(),
-                new_url.short_url()
-            )
-            .as_str(),
-        )
-        .into_response()
+    let rendered = new_url
+        .render()
+        .unwrap()
+        .split_once(new_url.short_url())
+        .unwrap();
 }
 
 async fn root() -> Response {
