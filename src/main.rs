@@ -17,6 +17,7 @@ use preferences::Preferences;
 use regex::Regex;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tracing::{debug, info, Level};
+use url_db::UrlRow;
 
 mod preferences;
 mod url_db;
@@ -191,14 +192,23 @@ async fn derivative(Path(extra): Path<String>) -> Response {
 }
 
 async fn consume_short_url(Path(url): Path<String>, State(pool): State<&PgPool>) -> Response {
-    let url_row = match url_db::retrieve_url_obj(url.as_str(), &pool).await {
+    let mut url_row: UrlRow = match url_db::retrieve_url_obj(url.as_str(), &pool).await {
         Ok(row) => row,
         Err(_) => return not_found_handler().await,
     };
 
+    url_db::incr_url_clicks(&mut url_row, pool).await;
+
+    let long = if url_row.long_url().starts_with("http") || url_row.long_url().starts_with("https")
+    {
+        url_row.long_url()
+    } else {
+        &format!("http://{}", url_row.long_url())
+    };
+
     Response::builder()
         .status(301) // Status 301: Moved permanently
-        .header(header::LOCATION, url_row.long_url())
+        .header(header::LOCATION, long)
         .body(Body::empty())
         .unwrap()
 }

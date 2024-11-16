@@ -80,6 +80,10 @@ impl UrlRow {
     pub fn clone_short_url(&self) -> String {
         self.shorturl.clone()
     }
+    pub fn incr_click(&mut self) -> &Self {
+        self.clicks += 1;
+        self
+    }
 }
 
 /// Creates a UrlRow, inserts it into the PostgreSQL databse, and returns the created UrlRow object
@@ -150,13 +154,14 @@ pub async fn retrieve_url(
     Ok(response)
 }
 
-pub async fn incr_url_clicks(id: i64, pool: &sqlx::PgPool) {
+pub async fn incr_url_clicks(row: &mut UrlRow, pool: &sqlx::PgPool) {
+    row.incr_click();
     sqlx::query(
         "UPDATE urls
         SET clicks = clicks + 1
         WHERE id = $1",
     )
-    .bind(id)
+    .bind(row.id())
     .execute(pool)
     .await
     .unwrap();
