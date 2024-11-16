@@ -31,6 +31,9 @@ impl PoolAndPrefs {
     fn pool(&self) -> &PgPool {
         &self.pool
     }
+    fn prefs(&self) -> &Preferences {
+        &self.prefs
+    }
 }
 
 #[tokio::main]
@@ -116,6 +119,7 @@ async fn post_new_url(
     State(pool_and_prefs): State<Arc<PoolAndPrefs>>,
     body: Bytes,
 ) -> Response<Body> {
+    let prefs = pool_and_prefs.prefs();
     let longurl: HashMap<String, String> =
         serde_html_form::from_bytes(&body).expect("Error deserializing form response");
     let new_url = url_db::create_url(
@@ -130,11 +134,14 @@ async fn post_new_url(
     )
     .await
     .unwrap();
-    let rendered = new_url
-        .render()
-        .unwrap()
-        .split_once(new_url.short_url())
-        .unwrap();
+    let rendered = new_url.render().unwrap();
+    let rendered = rendered.split_once(new_url.short_url()).unwrap();
+
+    let replaced_second = rendered.1.replace(
+        new_url.short_url(),
+        format!("{}/{}", prefs.domain_name(), new_url.short_url()).as_str(),
+    );
+    format!("{}{}{}", rendered.0, new_url.short_url(), replaced_second).into_response()
 }
 
 async fn root() -> Response {
