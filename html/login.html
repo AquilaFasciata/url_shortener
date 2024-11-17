@@ -26,10 +26,13 @@
 </head>
 
 <body>
-	<div id="content">
-		<form id="login-form" hx-post="/login">
-
-		</form>
+	<div id="content" style="text-align: center">
+		<h1>Login</h2>
+			<form id="login-form" hx-post="/login">
+				<input type="text" name="username" placeholder="Username">
+				<input type="password" name="password" placeholder="Password">
+				<input type="submit" name="submit" value="Login" id="login-button">
+			</form>
 	</div>
 
 </body>
