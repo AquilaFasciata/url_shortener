@@ -15,9 +15,10 @@ use axum::{
 use axum_server::tls_rustls::RustlsConfig;
 use preferences::Preferences;
 use regex::Regex;
+use serde::Deserialize;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tracing::{debug, info, Level};
-use url_db::UrlRow;
+use url_db::{UrlRow, UserRow};
 
 mod preferences;
 mod url_db;
@@ -34,6 +35,24 @@ impl PoolAndPrefs {
     }
     fn prefs(&self) -> &Preferences {
         &self.prefs
+    }
+    fn both(&self) -> (&PgPool, &Preferences) {
+        (&self.pool, &self.prefs)
+    }
+}
+
+#[derive(Deserialize)]
+struct LoginPayload<'a> {
+    username: &'a str,
+    password: &'a str,
+}
+
+impl<'a> LoginPayload<'a> {
+    fn username(&self) -> &str {
+        &self.username
+    }
+    fn password(&self) -> &str {
+        &self.password
     }
 }
 
@@ -273,4 +292,28 @@ fn image_load(path: &str, ext: &str) -> Response {
         .header(CONTENT_LENGTH, image.len())
         .body(image.into())
         .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR.into_response())
+}
+
+async fn attempt_login(
+    State(pool_and_prefs): State<Arc<PoolAndPrefs>>,
+    body: Bytes,
+) -> Response<Body> {
+    let (pool, prefs) = pool_and_prefs.both();
+    let login_data: LoginPayload = match serde_html_form::from_bytes(&body) {
+        Ok(parsed) => parsed,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
+
+    let user: UserRow = match user::retrieve_user_by_name(login_data.username(), pool).await {
+        Ok(user) => user,
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
+
+    if user::verify_pw(login_data.password(), &user).await {
+        todo!()
+    } else {
+        todo!()
+    }
+
+    return StatusCode::OK.into_response();
 }

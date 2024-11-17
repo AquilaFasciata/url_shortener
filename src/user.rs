@@ -59,6 +59,16 @@ pub async fn retrieve_user_by_id(id: i64, pool: &sqlx::PgPool) -> Result<UserRow
         .await
 }
 
+pub async fn retrieve_user_by_name(
+    username: &str,
+    pool: &sqlx::PgPool,
+) -> Result<UserRow, sqlx::Error> {
+    sqlx::query_as("SELECT * FROM users WHERE username=$1 LIMIT 1")
+        .bind(username)
+        .fetch_one(pool)
+        .await
+}
+
 fn hash_unsalted_password(password: Zeroizing<String>) -> String {
     let mut hash_fun = Sha512::new();
 
@@ -95,7 +105,7 @@ fn salt_password(password: Zeroizing<String>) -> (Zeroizing<String>, String) {
 }
 
 #[instrument]
-pub async fn verify_pw(password: Zeroizing<String>, user: &UserRow) -> bool {
+pub async fn verify_pw(password: &str, user: &UserRow) -> bool {
     let mut salted_password = Zeroizing::new(String::new());
     salted_password.reserve(14);
 
@@ -111,7 +121,7 @@ pub async fn verify_pw(password: Zeroizing<String>, user: &UserRow) -> bool {
         break;
     }
 
-    salted_password.push_str(password.as_str());
+    salted_password.push_str(password);
     let hashed_pw = hash_salted_password(salted_password);
     debug!("Whole hash in db is {}", user.hashed_pw());
     let stored_hash = user.hashed_pw().as_str().split_at(delimiter_index).1;
