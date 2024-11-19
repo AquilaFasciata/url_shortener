@@ -68,15 +68,13 @@ async fn main() -> Result<(), sqlx::Error> {
     let _ = tracing::subscriber::set_global_default(subscriber)
         .map_err(|_err| eprintln!("Error setting subscriber!"));
 
-    let certs;
-    if prefs.https_cert_path().is_some() {
-        certs = Some(RustlsConfig::from_pem_file(
+    let certs = match prefs.https_cert_path() {
+        Some(_) => Some(RustlsConfig::from_pem_file(
             prefs.https_cert_path().as_ref().unwrap(),
             prefs.https_key_path().as_ref().unwrap(),
-        ));
-    } else {
-        certs = None;
-    }
+        )),
+        None => None,
+    };
 
     let certs = RustlsConfig::from_pem_file("cert.pem", "key.pem");
 
