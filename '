@@ -1,0 +1,12 @@
+enum SigAlgo {
+    RS256("RS256"),
+}
+
+struct Jwt {
+
+}
+
+struct JwtHeader {
+    alg: SigAlgo,
+
+}
