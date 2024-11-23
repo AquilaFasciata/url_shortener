@@ -1,4 +1,4 @@
-use std::{fmt::Display, time::SystemTime};
+use std::{fmt::Display, time::{SystemTime, UNIX_EPOCH}};
 
 use hmac::{Hmac, Mac};
 use sha2::Sha256;
@@ -102,17 +102,27 @@ struct Payload {
     sub: i32,
     name: String,
     email: String,
-    iat: SystemTime,
+    iat: u64,
 }
 
 impl Payload {
-    pub fn new(sub: i32, name: String, email: String, iat: SystemTime) -> Self {
+    pub fn new(sub: i32, name: String, email: String, iat: u64) -> Self {
         Self {
             sub,
             name,
             email,
             iat,
         }
+    }
+}
+
+impl Display for Payload {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let sub_pair = format!("\"sub\":\"{}\"", self.sub);
+        let name_pair = format!("\"name\":\"{}\"", self.name);
+        let email_pair = format!("\"email\":\"{}\"", self.email);
+        let iat_pair = format!("\"iat\":{}", self.iat);
+        write!(f, "{{{sub_pair},{name_pair},{email_pair},{iat_pair}}}")
     }
 }
 
