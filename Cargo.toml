@@ -10,6 +10,7 @@ axum-server = { version = "0.7.1", features = ["tls-rustls"] }
 base64 = "0.22.1"
 hex = "0.4.3"
 hex-literal = "0.4.1"
+hmac = "0.12.1"
 rand = "0.8.5"
 rand_chacha = "0.3.1"
 regex = "1.10.6"

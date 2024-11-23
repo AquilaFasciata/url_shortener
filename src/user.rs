@@ -156,8 +156,8 @@ mod tests {
         let prefs = Preferences::load_config("./config.toml");
         let conn_url = format!(
             "postgres://{}:{}@172.17.0.2/testdb",
-            prefs.db_user(),
-            prefs.db_pass()
+            prefs.db_user().unwrap(),
+            prefs.db_pass().unwrap()
         );
         let pool = PgPoolOptions::new()
             .max_connections(prefs.db_pool_size())
@@ -187,7 +187,7 @@ mod tests {
         let hashed_pass: Zeroizing<String> = Zeroizing::new(String::from("12#4c3fdfe4efb17076577bfedcb6e1fbfff4d14abfdb8f0fc81c9a66fc5ed6a98d0b6e17b1b7175a29a5c4654743bef584feb48655a7701a7a31f8d7bf98e3222d"));
         let user = UserRow::user_with_pass(hashed_pass.clone().to_string());
         let clear_pass = Zeroizing::new(String::from("test"));
-        assert!(super::verify_pw(clear_pass, &user).await);
+        assert!(super::verify_pw(&clear_pass, &user).await);
     }
 
     #[sqlx::test]

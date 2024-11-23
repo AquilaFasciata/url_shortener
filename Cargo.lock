@@ -2203,6 +2203,7 @@ dependencies = [
  "base64",
  "hex",
  "hex-literal",
+ "hmac",
  "rand",
  "rand_chacha",
  "regex",

@@ -1,7 +1,9 @@
-use std::{
-    fmt::{write, Display},
-    time::SystemTime,
-};
+use std::{fmt::Display, time::SystemTime};
+
+use hmac::{Hmac, Mac};
+use sha2::Sha256;
+
+pub type HmacSha256 = Hmac<Sha256>;
 
 #[derive(Debug, PartialEq)]
 enum SigAlgo {
@@ -50,6 +52,24 @@ struct Jwt {
     payload: Payload,
 }
 
+impl Jwt {
+    pub fn new(head: JwtHeader, payload: Payload) -> Self {
+        Jwt {
+            header: head,
+            payload,
+        }
+    }
+    pub fn finalize_hs256(&self, secret: &str) -> String {
+        let header64 = 
+    }
+    pub fn header(&self) -> &JwtHeader {
+        &self.header
+    }
+    pub fn payload(&self) -> &Payload {
+        &self.payload
+    }
+}
+
 #[derive(Debug, PartialEq)]
 struct JwtHeader {
     alg: SigAlgo,
@@ -62,6 +82,18 @@ impl JwtHeader {
     }
     pub fn defaults() -> Self {
         Self::new(SigAlgo::HS256, String::from("JWT"))
+    }
+    pub fn alg(&self) -> &str {
+        self.alg.as_str()
+    }
+    pub fn r#type(&self) -> &String {
+        &self.r#type
+    }
+}
+
+impl Display for JwtHeader {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{\"alg\":\"{}\",\"typ\":\"{}\"}}", self.alg(), self.r#type)
     }
 }
 
