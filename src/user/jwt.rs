@@ -1,20 +1,14 @@
+use core::{slice::SlicePattern, str};
 use std::{
     fmt::Display,
+    io::Read,
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use base64::{
-    alphabet::STANDARD,
-    display::Base64Display,
-    engine::{
-        self,
-        general_purpose::{self, NO_PAD},
-        GeneralPurpose,
-    },
-    Engine,
-};
-use hmac::Hmac;
+use base64::{engine::general_purpose, Engine};
+use hmac::{Hmac, Mac};
 use sha2::Sha256;
+use zeroize::Zeroize;
 
 pub type HmacSha256 = Hmac<Sha256>;
 
@@ -77,7 +71,15 @@ impl Jwt {
         let payload64 = general_purpose::STANDARD.encode(self.payload().as_str());
 
         let partial_token = format!("{}.{}", header64, payload64);
-        let signature = HmacSha256
+        let mut signature = HmacSha256::new_from_slice(secret.as_bytes())
+            .expect("Error creating HMAC key; this shouldn't be possible!");
+        signature.update(partial_token.as_bytes());
+
+        let signature = signature.finalize().into_bytes();
+        return format!(
+            "{partial_token}.{}",
+            str::from_utf8(&signature).expect("Unable to parse signature")
+        );
     }
     pub fn header(&self) -> &JwtHeader {
         &self.header
