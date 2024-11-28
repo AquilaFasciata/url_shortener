@@ -1,6 +1,19 @@
-use std::{fmt::Display, time::{SystemTime, UNIX_EPOCH}};
+use std::{
+    fmt::Display,
+    time::{SystemTime, UNIX_EPOCH},
+};
 
-use hmac::{Hmac, Mac};
+use base64::{
+    alphabet::STANDARD,
+    display::Base64Display,
+    engine::{
+        self,
+        general_purpose::{self, NO_PAD},
+        GeneralPurpose,
+    },
+    Engine,
+};
+use hmac::Hmac;
 use sha2::Sha256;
 
 pub type HmacSha256 = Hmac<Sha256>;
@@ -60,7 +73,11 @@ impl Jwt {
         }
     }
     pub fn finalize_hs256(&self, secret: &str) -> String {
-        let header64 = 
+        let header64 = general_purpose::STANDARD.encode(self.header().as_str());
+        let payload64 = general_purpose::STANDARD.encode(self.payload().as_str());
+
+        let partial_token = format!("{}.{}", header64, payload64);
+        let signature = HmacSha256
     }
     pub fn header(&self) -> &JwtHeader {
         &self.header
@@ -89,11 +106,19 @@ impl JwtHeader {
     pub fn r#type(&self) -> &String {
         &self.r#type
     }
+    pub fn as_str(&self) -> &str {
+        self.to_string().as_str()
+    }
 }
 
 impl Display for JwtHeader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{{\"alg\":\"{}\",\"typ\":\"{}\"}}", self.alg(), self.r#type)
+        write!(
+            f,
+            "{{\"alg\":\"{}\",\"typ\":\"{}\"}}",
+            self.alg(),
+            self.r#type
+        )
     }
 }
 
@@ -114,6 +139,9 @@ impl Payload {
             iat,
         }
     }
+    pub fn as_str(&self) -> &str {
+        self.to_string().as_str()
+    }
 }
 
 impl Display for Payload {
@@ -128,6 +156,8 @@ impl Display for Payload {
 
 #[cfg(test)]
 mod tests {
+    use std::time::SystemTime;
+
     use super::*;
 
     #[test]
@@ -142,7 +172,10 @@ mod tests {
         let sub = 14;
         let email = "me@example.com".to_string();
         let name = "Test Man".to_string();
-        let iat = SystemTime::now();
+        let iat = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
         let constructor_payload = Payload::new(sub, name.clone(), email.clone(), iat);
         let control_payload = Payload {
             sub,
