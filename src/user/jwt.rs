@@ -1,4 +1,4 @@
-use core::{slice::SlicePattern, str};
+use core::str;
 use std::{
     fmt::Display,
     io::Read,
@@ -7,12 +7,12 @@ use std::{
 
 use base64::{engine::general_purpose, Engine};
 use hmac::{Hmac, Mac};
+use serde::Deserialize;
 use sha2::Sha256;
-use zeroize::Zeroize;
 
 pub type HmacSha256 = Hmac<Sha256>;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Deserialize)]
 enum SigAlgo {
     HS256,
     HS384,
@@ -87,9 +87,12 @@ impl Jwt {
     pub fn payload(&self) -> &Payload {
         &self.payload
     }
+    pub fn from_str(token: &str) -> Self {
+        let parts = token.split_terminator('.');
+    }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Deserialize)]
 struct JwtHeader {
     alg: SigAlgo,
     r#type: String,
