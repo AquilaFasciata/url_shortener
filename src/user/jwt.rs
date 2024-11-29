@@ -87,8 +87,18 @@ impl Jwt {
     pub fn payload(&self) -> &Payload {
         &self.payload
     }
-    pub fn from_str(token: &str) -> Self {
-        let parts = token.split_terminator('.');
+    pub fn from_str(token: &str, secret: &str) -> (Self, &str) {
+        let parts: [&str; 3] = token
+            .split_terminator('.')
+            .collect()
+            .expect("Error collecting parts");
+        let provided_hash = parts.last();
+
+        let mut test_hash: HmacSha256 =
+            HmacSha256::new_from_slice(secret.as_bytes()).expect("Error setting secret key");
+        test_hash.update(format!("{}.{}", parts.get(0), parts.get(1)).as_bytes());
+
+        return (Jwt {}, "l;aksjef;l");
     }
 }
 
@@ -127,7 +137,7 @@ impl Display for JwtHeader {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Deserialize)]
 struct Payload {
     sub: i32,
     name: String,
