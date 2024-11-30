@@ -1,4 +1,4 @@
-use core::str;
+use core::{panic, str};
 use std::{error::Error, fmt::Display};
 
 use axum::response::Response;
@@ -8,6 +8,12 @@ use serde::Deserialize;
 use sha2::Sha256;
 
 pub type HmacSha256 = Hmac<Sha256>;
+
+type Result<T> = std::result::Result<T, JwtError>;
+
+pub enum JwtError {
+    ParsingError,
+}
 
 #[derive(Debug, PartialEq, Deserialize)]
 enum SigAlgo {
@@ -93,16 +99,18 @@ impl Jwt {
             }
         }
     }
-    pub fn from_str(token: &str, secret: &str) -> Result<(Self, String), Error> {
+    pub fn from_str(token: &str, secret: &str) -> Result<(Self, String)> {
         let parts: Vec<&str> = token.split_terminator('.').collect();
-        if parts.len() > 3 {}
+        if parts.len() > 3 {
+            panic!("This isn't a valid")
+        }
         let provided_hash = parts.last();
 
         let mut test_hash: HmacSha256 =
             HmacSha256::new_from_slice(secret.as_bytes()).expect("Error setting secret key");
         test_hash.update(format!("{}.{}", parts.get(0), parts.get(1)).as_bytes());
 
-        return (Jwt {}, "l;aksjef;l");
+        return Ok((Jwt {}, String::from("test")));
     }
 }
 
