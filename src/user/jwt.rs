@@ -1,10 +1,7 @@
 use core::str;
-use std::{
-    fmt::Display,
-    io::Read,
-    time::{SystemTime, UNIX_EPOCH},
-};
+use std::{error::Error, fmt::Display};
 
+use axum::response::Response;
 use base64::{engine::general_purpose, Engine};
 use hmac::{Hmac, Mac};
 use serde::Deserialize;
@@ -49,7 +46,7 @@ impl SigAlgo {
 
 impl Display for SigAlgo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
+        write!(f, "{}", self.to_string().as_str())
     }
 }
 
@@ -87,11 +84,18 @@ impl Jwt {
     pub fn payload(&self) -> &Payload {
         &self.payload
     }
-    pub fn from_str(token: &str, secret: &str) -> (Self, &str) {
-        let parts: [&str; 3] = token
-            .split_terminator('.')
-            .collect()
-            .expect("Error collecting parts");
+    pub fn finalize(&self, secret: &str) -> String {
+        match self.header().alg() {
+            SigAlgo::HS256 => return self.finalize_hs256(secret),
+            _ => {
+                tracing::error!("not yet implemented!");
+                return String::new();
+            }
+        }
+    }
+    pub fn from_str(token: &str, secret: &str) -> Result<(Self, String), Error> {
+        let parts: Vec<&str> = token.split_terminator('.').collect();
+        if parts.len() > 3 {}
         let provided_hash = parts.last();
 
         let mut test_hash: HmacSha256 =
@@ -115,14 +119,14 @@ impl JwtHeader {
     pub fn defaults() -> Self {
         Self::new(SigAlgo::HS256, String::from("JWT"))
     }
-    pub fn alg(&self) -> &str {
-        self.alg.as_str()
+    pub fn alg(&self) -> SigAlgo {
+        self.alg
     }
     pub fn r#type(&self) -> &String {
         &self.r#type
     }
     pub fn as_str(&self) -> &str {
-        self.to_string().as_str()
+        format!("{{\"alg\":\"{}\",\"typ\":\"{}\"}}", &self.alg, &self.r#type).as_str()
     }
 }
 
