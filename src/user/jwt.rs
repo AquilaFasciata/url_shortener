@@ -1,13 +1,17 @@
 use core::str;
-use std::{error::Error, fmt::Display};
+use std::fmt::Display;
 
-use axum::response::Response;
 use base64::{engine::general_purpose, Engine};
 use hmac::{Hmac, Mac};
 use serde::Deserialize;
 use sha2::Sha256;
 
 pub type HmacSha256 = Hmac<Sha256>;
+
+pub enum JwtError {
+    ParsingError,
+    IncorrectLength,
+}
 
 #[derive(Debug, PartialEq, Deserialize)]
 enum SigAlgo {
@@ -93,14 +97,18 @@ impl Jwt {
             }
         }
     }
-    pub fn from_str(token: &str, secret: &str) -> Result<(Self, String), Error> {
+    pub fn from_str(token: &str, secret: &str) -> Result<(Self, String), JwtError> {
         let parts: Vec<&str> = token.split_terminator('.').collect();
-        if parts.len() > 3 {}
+        if parts.len() != 3 {
+            return Err(JwtError::IncorrectLength);
+        }
         let provided_hash = parts.last();
 
         let mut test_hash: HmacSha256 =
             HmacSha256::new_from_slice(secret.as_bytes()).expect("Error setting secret key");
-        test_hash.update(format!("{}.{}", parts.get(0), parts.get(1)).as_bytes());
+        test_hash.update(format!("{{{}}}.{{{}}}", parts[0], parts[1]).as_bytes());
+
+        let test_hash = test_hash.finalize().into_bytes();
 
         return (Jwt {}, "l;aksjef;l");
     }
