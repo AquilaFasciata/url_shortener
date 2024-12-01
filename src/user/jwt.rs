@@ -11,6 +11,17 @@ pub type HmacSha256 = Hmac<Sha256>;
 pub enum JwtError {
     ParsingError,
     IncorrectLength,
+    SerdeError(Box<dyn Display>),
+}
+
+impl serde::de::Error for JwtError {
+    fn custom<T>(msg: T) -> Self
+    where
+        T: Display,
+    {
+        let msg = Box::new(msg.to_string());
+        return JwtError::SerdeError(msg);
+    }
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
@@ -70,8 +81,8 @@ impl Jwt {
         }
     }
     pub fn finalize_hs256(&self, secret: &str) -> String {
-        let header64 = general_purpose::STANDARD.encode(self.header().as_str());
-        let payload64 = general_purpose::STANDARD.encode(self.payload().as_str());
+        let header64 = STANDARD_NO_PAD.encode(self.header().as_str());
+        let payload64 = STANDARD_NO_PAD.encode(self.payload().as_str());
 
         let partial_token = format!("{}.{}", header64, payload64);
         let mut signature = HmacSha256::new_from_slice(secret.as_bytes())
