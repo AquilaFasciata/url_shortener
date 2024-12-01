@@ -1,7 +1,7 @@
 use core::str;
 use std::fmt::Display;
 
-use base64::{engine::general_purpose, Engine};
+use base64::{engine::general_purpose::STANDARD_NO_PAD, Engine as _};
 use hmac::{Hmac, Mac};
 use serde::Deserialize;
 use sha2::Sha256;
@@ -58,6 +58,7 @@ impl Display for SigAlgo {
 struct Jwt {
     header: JwtHeader,
     payload: Payload,
+    signature: Option<String>,
 }
 
 impl Jwt {
@@ -65,6 +66,7 @@ impl Jwt {
         Jwt {
             header: head,
             payload,
+            signature: None,
         }
     }
     pub fn finalize_hs256(&self, secret: &str) -> String {
@@ -108,7 +110,11 @@ impl Jwt {
             HmacSha256::new_from_slice(secret.as_bytes()).expect("Error setting secret key");
         test_hash.update(format!("{{{}}}.{{{}}}", parts[0], parts[1]).as_bytes());
 
-        let test_hash = test_hash.finalize().into_bytes();
+        let test_hash = String::from_utf8(test_hash.finalize().into_bytes().to_vec());
+        let provided_hash = String::from(parts[2]);
+
+        let head: JwtHeader = serde_json::from_str(STANDARD_NO_PAD.decode(parts[0]))?;
+        let payload = STANDARD_NO_PAD.decode(parts[1]);
 
         return (Jwt {}, "l;aksjef;l");
     }
