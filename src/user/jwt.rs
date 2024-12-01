@@ -24,6 +24,12 @@ impl serde::de::Error for JwtError {
     }
 }
 
+impl std::error::Error for JwtError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None
+    }
+}
+
 #[derive(Debug, PartialEq, Deserialize)]
 enum SigAlgo {
     HS256,
