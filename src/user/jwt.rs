@@ -1,5 +1,8 @@
 use core::str;
-use std::fmt::Display;
+use std::{
+    error::Error,
+    fmt::{Debug, Display},
+};
 
 use base64::{engine::general_purpose::STANDARD_NO_PAD, Engine as _};
 use hmac::{Hmac, Mac};
@@ -27,6 +30,16 @@ impl serde::de::Error for JwtError {
 impl std::error::Error for JwtError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         None
+    }
+}
+
+impl Debug for JwtError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            JwtError::SerdeError(error) => Err(error),
+            JwtError::ParsingError => Ok("ParsingError"),
+            JwtError::IncorrectLength => Ok("IncorrectLength"),
+        }
     }
 }
 
