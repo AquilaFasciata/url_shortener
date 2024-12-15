@@ -1,5 +1,10 @@
-use core::str;
-use std::fmt::Display;
+<<<<<<< HEAD
+use core::{panic, str};
+use std::{error::Error, fmt::Display};
+=======
+use core::{slice::SlicePattern, str};
+use std::fmt::{write, Debug, Display};
+>>>>>>> refs/remotes/origin/master
 
 use askama::Result;
 use base64::{engine::general_purpose::STANDARD_NO_PAD, Engine};
@@ -9,7 +14,16 @@ use sha2::Sha256;
 
 pub type HmacSha256 = Hmac<Sha256>;
 
+<<<<<<< HEAD
+type Result<T> = std::result::Result<T, JwtError>;
+
+pub enum JwtError {
+    ParsingError,
+}
+
 #[derive(Debug, PartialEq, Deserialize)]
+=======
+#[derive(Debug)]
 pub enum JwtError {
     ParsingError,
     IncorrectLength,
@@ -44,6 +58,7 @@ impl serde::de::Error for JwtError {
 }
 
 #[derive(Debug, PartialEq, Deserialize, Clone, Copy)]
+>>>>>>> refs/remotes/origin/master
 enum SigAlgo {
     HS256,
     HS384,
@@ -129,6 +144,15 @@ impl Jwt {
             }
         }
     }
+<<<<<<< HEAD
+    pub fn from_str(token: &str, secret: &str) -> Result<(Self, String)> {
+        let parts: Vec<&str> = token.split_terminator('.').collect();
+        if parts.len() > 3 {
+            panic!("This isn't a valid")
+        }
+        let provided_hash = parts.last();
+=======
+
     /// Creates a JWT object from a base64 string. This does *NOT* implement the FromStr trait
     /// because it returns a tuple with the calculated signature for convience when comparing with
     /// the signature in the provided JWT
@@ -137,11 +161,15 @@ impl Jwt {
         if parts.len() != 3 {
             return Err(JwtError::IncorrectLength);
         }
+>>>>>>> refs/remotes/origin/master
 
         let mut test_hash: HmacSha256 =
             HmacSha256::new_from_slice(secret.as_bytes()).expect("Error setting secret key");
         test_hash.update(format!("{{{}}}.{{{}}}", parts[0], parts[1]).as_bytes());
 
+<<<<<<< HEAD
+        return Ok((Jwt {}, String::from("test")));
+=======
         let Ok(test_hash) = String::from_utf8(test_hash.finalize().into_bytes().to_vec()) else {
             return Err(JwtError::ParsingError);
         };
@@ -171,6 +199,7 @@ impl Jwt {
         };
 
         return Ok((supplied_token, test_hash));
+>>>>>>> refs/remotes/origin/master
     }
 }
 
