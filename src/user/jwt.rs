@@ -1,10 +1,10 @@
 use core::str;
 use std::{
-    error::Error,
     fmt::{Debug, Display},
+    str::FromStr,
 };
 
-use base64::{engine::general_purpose::STANDARD_NO_PAD, Engine as _};
+use base64::{engine::general_purpose::STANDARD_NO_PAD, Engine};
 use hmac::{Hmac, Mac};
 use serde::Deserialize;
 use sha2::Sha256;
@@ -17,33 +17,7 @@ pub enum JwtError {
     SerdeError(Box<dyn Display>),
 }
 
-impl serde::de::Error for JwtError {
-    fn custom<T>(msg: T) -> Self
-    where
-        T: Display,
-    {
-        let msg = Box::new(msg.to_string());
-        return JwtError::SerdeError(msg);
-    }
-}
-
-impl std::error::Error for JwtError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        None
-    }
-}
-
-impl Debug for JwtError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            JwtError::SerdeError(error) => Err(error),
-            JwtError::ParsingError => Ok("ParsingError"),
-            JwtError::IncorrectLength => Ok("IncorrectLength"),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq, Deserialize)]
+#[derive(Debug, PartialEq, Deserialize, Clone, Copy)]
 enum SigAlgo {
     HS256,
     HS384,
@@ -100,8 +74,8 @@ impl Jwt {
         }
     }
     pub fn finalize_hs256(&self, secret: &str) -> String {
-        let header64 = STANDARD_NO_PAD.encode(self.header().as_str());
-        let payload64 = STANDARD_NO_PAD.encode(self.payload().as_str());
+        let header64 = STANDARD_NO_PAD.encode(self.header().to_string().as_str());
+        let payload64 = STANDARD_NO_PAD.encode(self.payload().to_string().as_str());
 
         let partial_token = format!("{}.{}", header64, payload64);
         let mut signature = HmacSha256::new_from_slice(secret.as_bytes())
@@ -129,7 +103,7 @@ impl Jwt {
             }
         }
     }
-    pub fn from_str(token: &str, secret: &str) -> Result<(Self, String), JwtError> {
+    pub fn from_str(token: &str, secret: &str) -> Result<(Self, String), serde::de::Error> {
         let parts: Vec<&str> = token.split_terminator('.').collect();
         if parts.len() != 3 {
             return Err(JwtError::IncorrectLength);
@@ -143,10 +117,15 @@ impl Jwt {
         let test_hash = String::from_utf8(test_hash.finalize().into_bytes().to_vec());
         let provided_hash = String::from(parts[2]);
 
-        let head: JwtHeader = serde_json::from_str(STANDARD_NO_PAD.decode(parts[0]))?;
+        let header_decoded = STANDARD_NO_PAD.decode(parts[0]).unwrap();
+        let head: JwtHeader =
+            match serde_json::from_str(str::from_utf8(header_decoded.as_slice()).unwrap()) {
+                Ok(val) => val,
+                Err(_) => return JwtError::ParsingError,
+            };
         let payload = STANDARD_NO_PAD.decode(parts[1]);
 
-        return (Jwt {}, "l;aksjef;l");
+        todo!()
     }
 }
 
@@ -168,9 +147,6 @@ impl JwtHeader {
     }
     pub fn r#type(&self) -> &String {
         &self.r#type
-    }
-    pub fn as_str(&self) -> &str {
-        format!("{{\"alg\":\"{}\",\"typ\":\"{}\"}}", &self.alg, &self.r#type).as_str()
     }
 }
 
@@ -202,9 +178,6 @@ impl Payload {
             iat,
         }
     }
-    pub fn as_str(&self) -> &str {
-        self.to_string().as_str()
-    }
 }
 
 impl Display for Payload {
@@ -219,7 +192,7 @@ impl Display for Payload {
 
 #[cfg(test)]
 mod tests {
-    use std::time::SystemTime;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     use super::*;
 
