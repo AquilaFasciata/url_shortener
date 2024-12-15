@@ -1,9 +1,7 @@
-use core::str;
-use std::{
-    fmt::{Debug, Display},
-    str::FromStr,
-};
+use core::{slice::SlicePattern, str};
+use std::fmt::{write, Debug, Display};
 
+use askama::Result;
 use base64::{engine::general_purpose::STANDARD_NO_PAD, Engine};
 use hmac::{Hmac, Mac};
 use serde::Deserialize;
@@ -11,10 +9,38 @@ use sha2::Sha256;
 
 pub type HmacSha256 = Hmac<Sha256>;
 
+#[derive(Debug)]
 pub enum JwtError {
     ParsingError,
     IncorrectLength,
-    SerdeError(Box<dyn Display>),
+    SerdeError(String),
+}
+
+impl Display for JwtError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::SerdeError(msg) => write!(f, "SerdeError: {msg}"),
+            _ => write!(f, "{:#?}", self),
+        }
+    }
+}
+
+impl std::error::Error for JwtError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            JwtError::SerdeError(err) => Some(Err(err).unwrap()),
+            _ => None,
+        }
+    }
+}
+
+impl serde::de::Error for JwtError {
+    fn custom<T>(msg: T) -> Self
+    where
+        T: Display,
+    {
+        JwtError::SerdeError(msg.to_string())
+    }
 }
 
 #[derive(Debug, PartialEq, Deserialize, Clone, Copy)]
@@ -61,12 +87,12 @@ impl Display for SigAlgo {
 #[derive(Debug, PartialEq)]
 struct Jwt {
     header: JwtHeader,
-    payload: Payload,
+    payload: JwtPayload,
     signature: Option<String>,
 }
 
 impl Jwt {
-    pub fn new(head: JwtHeader, payload: Payload) -> Self {
+    pub fn new(head: JwtHeader, payload: JwtPayload) -> Self {
         Jwt {
             header: head,
             payload,
@@ -91,7 +117,7 @@ impl Jwt {
     pub fn header(&self) -> &JwtHeader {
         &self.header
     }
-    pub fn payload(&self) -> &Payload {
+    pub fn payload(&self) -> &JwtPayload {
         &self.payload
     }
     pub fn finalize(&self, secret: &str) -> String {
@@ -103,29 +129,45 @@ impl Jwt {
             }
         }
     }
-    pub fn from_str(token: &str, secret: &str) -> Result<(Self, String), serde::de::Error> {
+    pub fn from_str(token: &str, secret: &str) -> Result<(Self, String), impl serde::de::Error> {
         let parts: Vec<&str> = token.split_terminator('.').collect();
         if parts.len() != 3 {
             return Err(JwtError::IncorrectLength);
         }
-        let provided_hash = parts.last();
 
         let mut test_hash: HmacSha256 =
             HmacSha256::new_from_slice(secret.as_bytes()).expect("Error setting secret key");
         test_hash.update(format!("{{{}}}.{{{}}}", parts[0], parts[1]).as_bytes());
 
-        let test_hash = String::from_utf8(test_hash.finalize().into_bytes().to_vec());
+        let Ok(test_hash) = String::from_utf8(test_hash.finalize().into_bytes().to_vec()) else {
+            return Err(JwtError::ParsingError);
+        };
         let provided_hash = String::from(parts[2]);
 
         let header_decoded = STANDARD_NO_PAD.decode(parts[0]).unwrap();
-        let head: JwtHeader =
+        let header: JwtHeader =
             match serde_json::from_str(str::from_utf8(header_decoded.as_slice()).unwrap()) {
                 Ok(val) => val,
-                Err(_) => return JwtError::ParsingError,
+                Err(e) => return Err(JwtError::SerdeError(e.to_string())),
             };
-        let payload = STANDARD_NO_PAD.decode(parts[1]);
+        let Ok(payload_decoded) = STANDARD_NO_PAD.decode(parts[1]) else {
+            return Err(JwtError::ParsingError);
+        };
 
-        todo!()
+        let payload: JwtPayload = match serde_json::from_slice(payload_decoded.as_slice()) {
+            Ok(val) => val,
+            Err(e) => return Err(JwtError::SerdeError(e.to_string())),
+        };
+
+        let signature = Some(provided_hash);
+
+        let supplied_token = Self {
+            header,
+            payload,
+            signature,
+        };
+
+        return Ok((supplied_token, test_hash));
     }
 }
 
@@ -162,14 +204,14 @@ impl Display for JwtHeader {
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
-struct Payload {
+struct JwtPayload {
     sub: i32,
     name: String,
     email: String,
     iat: u64,
 }
 
-impl Payload {
+impl JwtPayload {
     pub fn new(sub: i32, name: String, email: String, iat: u64) -> Self {
         Self {
             sub,
@@ -180,7 +222,7 @@ impl Payload {
     }
 }
 
-impl Display for Payload {
+impl Display for JwtPayload {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let sub_pair = format!("\"sub\":\"{}\"", self.sub);
         let name_pair = format!("\"name\":\"{}\"", self.name);
@@ -212,8 +254,8 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_secs();
-        let constructor_payload = Payload::new(sub, name.clone(), email.clone(), iat);
-        let control_payload = Payload {
+        let constructor_payload = JwtPayload::new(sub, name.clone(), email.clone(), iat);
+        let control_payload = JwtPayload {
             sub,
             name,
             email,
