@@ -181,6 +181,9 @@ struct JwtHeader {
 }
 
 impl JwtHeader {
+    /// Creates a new header using the alogrithm specified by the [SigAlgo] enum and the type. Any
+    /// type supported by javascript tokens *should* be supported; though JWT should be the only
+    /// one used as of now, so that is all I test
     pub fn new(alg: SigAlgo, r#type: String) -> Self {
         Self { alg, r#type }
     }
@@ -215,6 +218,7 @@ struct JwtPayload {
 }
 
 impl JwtPayload {
+    /// Creates a new payload with a provided subscriber, name, email, and the issued at time.
     pub fn new(sub: i32, name: String, email: String, iat: u64) -> Self {
         Self {
             sub,
@@ -265,5 +269,30 @@ mod tests {
             iat,
         };
         assert_eq!(control_payload, constructor_payload);
+    }
+
+    #[test]
+    fn full_jwt() {
+        let iat = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let header = JwtHeader::defaults();
+        let payload = JwtPayload::new(
+            143,
+            String::from("John"),
+            String::from("test@example.com"),
+            iat,
+        );
+        let token = Jwt::new(header.clone(), payload.clone());
+
+        assert_eq!(
+            token,
+            Jwt {
+                header,
+                payload,
+                signature: None
+            }
+        );
     }
 }
