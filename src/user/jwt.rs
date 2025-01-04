@@ -14,6 +14,7 @@ pub enum JwtError {
     ParsingError,
     IncorrectLength,
     SerdeError(String),
+    IncorrectSignature,
 }
 
 impl Display for JwtError {
@@ -99,7 +100,7 @@ impl Jwt {
             signature: None,
         }
     }
-    pub fn finalize_hs256(&self, secret: &str) -> String {
+    fn finalize_hs256(&self, secret: &str) -> String {
         let header64 = STANDARD_NO_PAD.encode(self.header().to_string().as_str());
         let payload64 = STANDARD_NO_PAD.encode(self.payload().to_string().as_str());
 
@@ -172,6 +173,20 @@ impl Jwt {
 
         return Ok((supplied_token, test_hash));
     }
+
+    pub fn verify(&self, secret: &str) -> Result<bool, JwtError> {
+        let self_sig: String = self.signature.clone().unwrap_or(String::new());
+        let finalized = self.finalize(secret);
+        let computed_sig = match finalized.split_terminator('.').last() {
+            Some(sig) => sig,
+            None => return Err(JwtError::ParsingError),
+        };
+        if self_sig.as_str() == computed_sig {
+            return Ok(true);
+        } else {
+            return Ok(false);
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
@@ -209,6 +224,15 @@ impl Display for JwtHeader {
     }
 }
 
+impl Clone for JwtHeader {
+    fn clone(&self) -> Self {
+        Self {
+            alg: self.alg(),
+            r#type: self.r#type.clone(),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Deserialize)]
 struct JwtPayload {
     sub: i32,
@@ -236,6 +260,17 @@ impl Display for JwtPayload {
         let email_pair = format!("\"email\":\"{}\"", self.email);
         let iat_pair = format!("\"iat\":{}", self.iat);
         write!(f, "{{{sub_pair},{name_pair},{email_pair},{iat_pair}}}")
+    }
+}
+
+impl Clone for JwtPayload {
+    fn clone(&self) -> Self {
+        JwtPayload {
+            sub: self.sub,
+            name: self.name.clone(),
+            email: self.email.clone(),
+            iat: self.iat,
+        }
     }
 }
 
