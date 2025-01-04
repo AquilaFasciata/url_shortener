@@ -51,7 +51,8 @@ impl Preferences {
         &self.http_ip
     }
     pub fn load_config(path: &str) -> Result<Self, std::io::Error> {
-        let path = path.trim_matches('/').to_owned() + "/config.toml";
+        let path = path.trim_matches('/').to_owned();
+        eprintln!("Config path is {}", path.as_str());
         let file_buff = match fs::read_to_string(path.as_str()) {
             Ok(buff) => buff,
             Err(_) => return create_default_config(path.as_str()),

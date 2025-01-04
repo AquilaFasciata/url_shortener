@@ -208,16 +208,18 @@ async fn url_db_create(new_row: &UrlRow, pool: &sqlx::PgPool) -> Result<i64, sql
 
 #[cfg(test)]
 mod tests {
+    use std::env;
+
     use sqlx::{postgres::PgPoolOptions, PgPool};
 
     use crate::preferences::Preferences;
 
     use super::*;
 
-    static mut TEST_SHORT: String = String::new();
-
     async fn pool_init() -> (PgPool, Preferences) {
-        let prefs = Preferences::load_config("./config.toml");
+        eprintln!("Current dir: {:#?}", env::current_dir().unwrap());
+        let prefs =
+            Preferences::load_config("./config.toml").expect("Error loading config from TOML");
         let conn_url = format!(
             "postgres://{}:{}@172.17.0.2/testdb",
             prefs.db_user(),
@@ -232,42 +234,36 @@ mod tests {
         return (pool, prefs);
     }
 
-    #[sqlx::test]
-    async fn test_make_url() {
+    async fn test_make_url() -> UrlRow {
         let (pool, prefs) = pool_init().await;
         let short_row: UrlRow = create_url("https://example.com", None, &pool, prefs.url_len())
             .await
             .unwrap();
-
-        unsafe {
-            TEST_SHORT = short_row.shorturl.clone();
-        }
 
         println!("{:#?}", short_row);
 
         assert_eq!(short_row.longurl, "https://example.com");
         assert_eq!(short_row.created_by, None);
         assert_eq!(short_row.clicks, 0);
+        return short_row;
+    }
+
+    async fn test_retrieve_url(test_short: UrlRow) {
+        let (pool, _) = pool_init().await;
+
+        let url_row: UrlRow = test_short;
+        assert_eq!(url_row.longurl, "https://example.com");
+        assert_eq!(url_row.created_by, None);
+        let url_row: String = retrieve_url(url_row.short_url().as_str(), &pool)
+            .await
+            .unwrap();
+        assert_eq!(url_row, "https://example.com");
     }
 
     #[sqlx::test]
-    async fn test_retrieve_url() {
-        let (pool, _) = pool_init().await;
-
-        let url_row: UrlRow;
-        unsafe {
-            url_row = retrieve_url_obj(TEST_SHORT.clone().as_str(), &pool)
-                .await
-                .unwrap();
-        }
-        assert_eq!(url_row.longurl, "https://example.com");
-        assert_eq!(url_row.created_by, None);
-        let url_row: String;
-        unsafe {
-            eprintln!("Short url is: {}", TEST_SHORT);
-            url_row = retrieve_url(TEST_SHORT.as_str(), &pool).await.unwrap();
-        }
-        assert_eq!(url_row, "https://example.com");
+    async fn test_make_and_retrieve() {
+        let row = test_make_url().await;
+        test_retrieve_url(row).await;
     }
 
     #[sqlx::test]

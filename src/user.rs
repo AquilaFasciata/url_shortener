@@ -153,11 +153,12 @@ mod tests {
     use super::*;
 
     async fn pool_init() -> (PgPool, Preferences) {
-        let prefs = Preferences::load_config("./config.toml");
+        let prefs =
+            Preferences::load_config("./config.toml").expect("Error loading preferences from TOML");
         let conn_url = format!(
             "postgres://{}:{}@172.17.0.2/testdb",
-            prefs.db_user().unwrap(),
-            prefs.db_pass().unwrap()
+            prefs.db_user(),
+            prefs.db_pass(),
         );
         let pool = PgPoolOptions::new()
             .max_connections(prefs.db_pool_size())
