@@ -110,6 +110,8 @@ impl Jwt {
         signature.update(partial_token.as_bytes());
 
         let signature = signature.finalize().into_bytes();
+        let signature = signature.as_slice();
+        let sig_str = str::from_utf8(&signature).expect("Unable to parse signature");
         return format!(
             "{partial_token}.{}",
             str::from_utf8(&signature).expect("Unable to parse signature")
@@ -284,80 +286,80 @@ impl Clone for JwtPayload {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use std::time::{SystemTime, UNIX_EPOCH};
-//
-//     use super::*;
-//
-//     const SECRET: &str = "Happy Test";
-//
-//     #[test]
-//     fn header_construction() {
-//         let header = JwtHeader::new(SigAlgo::HS256, String::from("JWT"));
-//         let default = JwtHeader::defaults();
-//         assert_eq!(header, default);
-//     }
-//
-//     #[test]
-//     fn payload() {
-//         let sub = 14;
-//         let email = "me@example.com".to_string();
-//         let name = "Test Man".to_string();
-//         let iat = SystemTime::now()
-//             .duration_since(UNIX_EPOCH)
-//             .unwrap()
-//             .as_secs();
-//         let constructor_payload = JwtPayload::new(sub, name.clone(), email.clone(), iat);
-//         let control_payload = JwtPayload {
-//             sub,
-//             name,
-//             email,
-//             iat,
-//         };
-//         assert_eq!(control_payload, constructor_payload);
-//     }
-//
-//     #[test]
-//     fn full_jwt() {
-//         let iat = SystemTime::now()
-//             .duration_since(UNIX_EPOCH)
-//             .unwrap()
-//             .as_secs();
-//         let header = JwtHeader::defaults();
-//         let payload = JwtPayload::new(
-//             143,
-//             String::from("John"),
-//             String::from("test@example.com"),
-//             iat,
-//         );
-//         let token = Jwt::new(header.clone(), payload.clone());
-//
-//         assert_eq!(
-//             token,
-//             Jwt {
-//                 header,
-//                 payload,
-//                 signature: None
-//             }
-//         );
-//     }
-//
-//     #[test]
-//     fn verify() {
-//         let iat = SystemTime::now()
-//             .duration_since(UNIX_EPOCH)
-//             .unwrap()
-//             .as_secs();
-//         let header = JwtHeader::defaults();
-//         let payload = JwtPayload::new(
-//             143,
-//             String::from("John"),
-//             String::from("test@example.com"),
-//             iat,
-//         );
-//         let token = Jwt::new(header, payload);
-//         let compare = token.verify(SECRET);
-//         assert!(compare.unwrap());
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    use super::*;
+
+    const SECRET: &str = "Happy Test";
+
+    #[test]
+    fn header_construction() {
+        let header = JwtHeader::new(SigAlgo::HS256, String::from("JWT"));
+        let default = JwtHeader::defaults();
+        assert_eq!(header, default);
+    }
+
+    #[test]
+    fn payload() {
+        let sub = 14;
+        let email = "me@example.com".to_string();
+        let name = "Test Man".to_string();
+        let iat = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let constructor_payload = JwtPayload::new(sub, name.clone(), email.clone(), iat);
+        let control_payload = JwtPayload {
+            sub,
+            name,
+            email,
+            iat,
+        };
+        assert_eq!(control_payload, constructor_payload);
+    }
+
+    #[test]
+    fn full_jwt() {
+        let iat = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let header = JwtHeader::defaults();
+        let payload = JwtPayload::new(
+            143,
+            String::from("John"),
+            String::from("test@example.com"),
+            iat,
+        );
+        let token = Jwt::new(header.clone(), payload.clone());
+
+        assert_eq!(
+            token,
+            Jwt {
+                header,
+                payload,
+                signature: None
+            }
+        );
+    }
+
+    #[test]
+    fn verify() {
+        let iat = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        let header = JwtHeader::defaults();
+        let payload = JwtPayload::new(
+            143,
+            String::from("John"),
+            String::from("test@example.com"),
+            iat,
+        );
+        let token = Jwt::new(header, payload);
+        let compare = token.verify(SECRET);
+        assert!(compare.unwrap());
+    }
+}
