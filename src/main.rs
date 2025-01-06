@@ -58,7 +58,7 @@ impl<'a> LoginPayload<'a> {
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
-    let prefs = Preferences::load_config(".").expect("Error loading configuration. {}");
+    let prefs = Preferences::load_config("config.toml").expect("Error loading configuration.");
     let subscriber = tracing_subscriber::fmt()
         .with_max_level(Level::DEBUG)
         .compact()
@@ -87,11 +87,12 @@ async fn main() -> Result<(), sqlx::Error> {
 
     let mut config: Option<RustlsConfig> = None;
     if cert.is_some() && key.is_some() {
-        let temp = RustlsConfig::from_pem_file(cert.unwrap(), key.unwrap());
-        let (conf_fut, pool) = tokio::join!(temp, pool_fut);
+        let temp = RustlsConfig::from_pem_file(cert.as_ref().unwrap(), key.as_ref().unwrap());
+        let conf_fut;
+        (conf_fut, pool) = tokio::join!(temp, pool_fut);
         config = Some(conf_fut.unwrap());
     } else {
-        let pool = tokio::join!(pool_fut);
+        pool = pool_fut.await;
     }
 
     let pool_and_prefs = PoolAndPrefs {
@@ -116,8 +117,8 @@ async fn main() -> Result<(), sqlx::Error> {
         prefs.port()
     );
 
-    if certs.is_ok() {
-        axum_server::bind_rustls(address, certs.unwrap())
+    if config.is_some() {
+        axum_server::bind_rustls(address, config.unwrap())
             .serve(app.into_make_service())
             .await
             .unwrap();
