@@ -3,7 +3,6 @@ use std::fmt::Display;
 
 use askama::Result;
 use base64::{engine::general_purpose::STANDARD_NO_PAD, Engine};
-use hex_literal::hex;
 use hmac::{Hmac, Mac};
 use serde::Deserialize;
 use sha2::Sha256;
@@ -363,7 +362,7 @@ mod tests {
             .unwrap()
             .as_secs();
         let header = JwtHeader::defaults();
-        let payload = JwtPayload::new(
+        let mut payload = JwtPayload::new(
             143,
             String::from("John"),
             String::from("test@example.com"),
@@ -379,7 +378,9 @@ mod tests {
             .to_string()
             .into();
         println!("Testing Jwt: {:#?}", token);
-        let compare = token.verify(SECRET);
+        let compare = token.clone().verify(SECRET);
         assert!(compare.unwrap());
+        token.payload.iat = 182;
+        assert_eq!(token.verify(SECRET).unwrap(), false);
     }
 }
