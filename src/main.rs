@@ -68,15 +68,8 @@ async fn main() -> Result<(), sqlx::Error> {
     let _ = tracing::subscriber::set_global_default(subscriber)
         .map_err(|_err| eprintln!("Error setting subscriber!"));
 
-    let certs = match prefs.https_cert_path() {
-        Some(_) => Some(RustlsConfig::from_pem_file(
-            prefs.https_cert_path().as_ref().unwrap(),
-            prefs.https_key_path().as_ref().unwrap(),
-        )),
-        None => None,
-    };
-
-    let certs = RustlsConfig::from_pem_file("cert.pem", "key.pem");
+    let cert = prefs.https_cert_path();
+    let key = prefs.https_key_path();
 
     let router = Router::new();
     let url = format!(
@@ -87,11 +80,19 @@ async fn main() -> Result<(), sqlx::Error> {
         prefs.db_name()
     );
     // This pool is to be used throughout
-    let pool = PgPoolOptions::new()
+    let pool_fut = PgPoolOptions::new()
         .max_connections(prefs.db_pool_size())
         .connect(url.as_str());
+    let pool: Result<PgPool, sqlx::Error>;
 
-    let (certs, pool) = tokio::join!(certs, pool);
+    let mut config: Option<RustlsConfig> = None;
+    if cert.is_some() && key.is_some() {
+        let temp = RustlsConfig::from_pem_file(cert.unwrap(), key.unwrap());
+        let (conf_fut, pool) = tokio::join!(temp, pool_fut);
+        config = Some(conf_fut.unwrap());
+    } else {
+        let pool = tokio::join!(pool_fut);
+    }
 
     let pool_and_prefs = PoolAndPrefs {
         pool: pool.expect("Error creating connection pool. {}"),

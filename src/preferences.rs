@@ -17,6 +17,7 @@ pub struct Preferences {
     db_pool_size: u32,
     https_cert_path: Option<String>,
     https_key_path: Option<String>,
+    // TODO: Log verbosity
 }
 
 impl Preferences {
