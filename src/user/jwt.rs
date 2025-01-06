@@ -1,8 +1,9 @@
-use core::{slice::SlicePattern, str};
+use core::str;
 use std::fmt::Display;
 
 use askama::Result;
 use base64::{engine::general_purpose::STANDARD_NO_PAD, Engine};
+use hex_literal::hex;
 use hmac::{Hmac, Mac};
 use serde::Deserialize;
 use sha2::Sha256;
@@ -123,7 +124,8 @@ impl Jwt {
             .expect("Error creating HMAC key; this shouldn't be possible!");
         signature.update(partial_token.as_bytes());
 
-        let signature = signature.finalize().;
+        let signature = signature.finalize().into_bytes();
+        let signature = hex::encode(signature);
         return format!("{partial_token}.{}", signature);
     }
     pub fn header(&self) -> &JwtHeader {
