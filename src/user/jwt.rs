@@ -1,4 +1,4 @@
-use core::str;
+use core::{slice::SlicePattern, str};
 use std::fmt::Display;
 
 use askama::Result;
@@ -81,7 +81,21 @@ impl SigAlgo {
 
 impl Display for SigAlgo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_string().as_str())
+        let converted = match self {
+            Self::HS256 => "HS256",
+            Self::HS384 => "HS384",
+            Self::HS512 => "HS512",
+            Self::RS256 => "RS256",
+            Self::RS384 => "RS384",
+            Self::RS512 => "RS512",
+            Self::ES256 => "ES256",
+            Self::ES384 => "ES384",
+            Self::ES512 => "ES512",
+            Self::PS256 => "PS256",
+            Self::PS384 => "PS384",
+            Self::PS512 => "PS512",
+        };
+        write!(f, "{}", converted)
     }
 }
 
@@ -109,13 +123,8 @@ impl Jwt {
             .expect("Error creating HMAC key; this shouldn't be possible!");
         signature.update(partial_token.as_bytes());
 
-        let signature = signature.finalize().into_bytes();
-        let signature = signature.as_slice();
-        let sig_str = str::from_utf8(&signature).expect("Unable to parse signature");
-        return format!(
-            "{partial_token}.{}",
-            str::from_utf8(&signature).expect("Unable to parse signature")
-        );
+        let signature = signature.finalize().;
+        return format!("{partial_token}.{}", signature);
     }
     pub fn header(&self) -> &JwtHeader {
         &self.header
@@ -346,7 +355,7 @@ mod tests {
     }
 
     #[test]
-    fn verify() {
+    fn test_verify() {
         let iat = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -358,7 +367,16 @@ mod tests {
             String::from("test@example.com"),
             iat,
         );
-        let token = Jwt::new(header, payload);
+        let mut token = Jwt::new(header, payload);
+        token.signature = token
+            .clone()
+            .finalize(SECRET)
+            .split_terminator('.')
+            .last()
+            .expect("Error Parsing the returned token")
+            .to_string()
+            .into();
+        println!("Testing Jwt: {:#?}", token);
         let compare = token.verify(SECRET);
         assert!(compare.unwrap());
     }
