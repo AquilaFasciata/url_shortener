@@ -17,6 +17,7 @@ pub struct Preferences {
     db_pool_size: u32,
     https_cert_path: Option<String>,
     https_key_path: Option<String>,
+    jwt_secret: String,
     // TODO: Log verbosity
 }
 
@@ -81,9 +82,10 @@ fn create_default_config(path: &str) -> Result<Preferences, std::io::Error> {
         db_pool_size: 10,
         https_cert_path: None,
         https_key_path: None,
+        jwt_secret: String::from("THISISALSOVERYBAD CHANGE!!"),
     };
-    eprintln!("Using default password. \x1b[1mTHIS MUST BE CHANGED!!!\x1b[0m");
-    error!("Using default password. \x1b[1mTHIS MUST BE CHANGED!!!\x1b[0m");
+    eprintln!("Using default passwords. \x1b[1mTHIS MUST BE CHANGED!!!\x1b[0m");
+    error!("Using default passwords. \x1b[1mTHIS MUST BE CHANGED!!!\x1b[0m");
     fs::write(
         path,
         toml::to_string(&new_pref)
