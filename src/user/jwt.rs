@@ -45,7 +45,7 @@ impl serde::de::Error for JwtError {
 }
 
 #[derive(Debug, PartialEq, Deserialize, Clone, Copy)]
-enum SigAlgo {
+pub enum SigAlgo {
     HS256,
     HS384,
     HS512,
@@ -100,7 +100,7 @@ impl Display for SigAlgo {
 }
 
 #[derive(Debug, PartialEq)]
-struct Jwt {
+pub struct Jwt {
     header: JwtHeader,
     payload: JwtPayload,
     signature: Option<String>,
@@ -212,7 +212,7 @@ impl Clone for Jwt {
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
-struct JwtHeader {
+pub struct JwtHeader {
     alg: SigAlgo,
     r#type: String,
 }
@@ -256,8 +256,8 @@ impl Clone for JwtHeader {
 }
 
 #[derive(Debug, PartialEq, Deserialize)]
-struct JwtPayload {
-    sub: i32,
+pub struct JwtPayload {
+    sub: i64,
     name: String,
     email: String,
     iat: u64,
@@ -265,7 +265,7 @@ struct JwtPayload {
 
 impl JwtPayload {
     /// Creates a new payload with a provided subscriber, name, email, and the issued at time.
-    pub fn new(sub: i32, name: String, email: String, iat: u64) -> Self {
+    pub fn new(sub: i64, name: String, email: String, iat: u64) -> Self {
         Self {
             sub,
             name,
@@ -362,7 +362,7 @@ mod tests {
             .unwrap()
             .as_secs();
         let header = JwtHeader::defaults();
-        let mut payload = JwtPayload::new(
+        let payload = JwtPayload::new(
             143,
             String::from("John"),
             String::from("test@example.com"),

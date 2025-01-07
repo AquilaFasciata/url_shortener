@@ -1,4 +1,10 @@
-use std::{collections::HashMap, fs, net::SocketAddr, sync::Arc};
+use std::{
+    collections::HashMap,
+    fs,
+    net::SocketAddr,
+    sync::Arc,
+    time::{self, UNIX_EPOCH},
+};
 
 use askama::Template;
 use axum::{
@@ -19,6 +25,7 @@ use serde::Deserialize;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tracing::{debug, info, Level};
 use url_db::{UrlRow, UserRow};
+use user::jwt::{self, Jwt, JwtHeader, JwtPayload, SigAlgo};
 
 mod preferences;
 mod url_db;
@@ -299,6 +306,10 @@ async fn attempt_login(
     body: Bytes,
 ) -> Response<Body> {
     let (pool, prefs) = pool_and_prefs.both();
+    let current_time = time::SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
     let login_data: LoginPayload = match serde_html_form::from_bytes(&body) {
         Ok(parsed) => parsed,
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
@@ -310,7 +321,15 @@ async fn attempt_login(
     };
 
     if user::verify_pw(login_data.password(), &user).await {
-        todo!()
+        let token = Jwt::new(
+            JwtHeader::new(SigAlgo::HS256, String::from("JWT")),
+            JwtPayload::new(
+                *user.id(),
+                user.username().to_string(),
+                user.email().to_string(),
+                current_time,
+            ),
+        );
     } else {
         todo!()
     }
