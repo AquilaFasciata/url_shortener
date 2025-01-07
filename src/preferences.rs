@@ -3,6 +3,12 @@ use std::fs;
 use serde::{Deserialize, Serialize};
 use tracing::error;
 
+#[derive(Debug)]
+pub enum PrefError {
+    IoError(std::io::Error),
+    TomlError(toml::de::Error),
+}
+
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Preferences {
     url_len: usize,
@@ -52,13 +58,34 @@ impl Preferences {
     pub fn http_ip(&self) -> &String {
         &self.http_ip
     }
-    pub fn load_config(path: &str) -> Result<Self, std::io::Error> {
+    pub fn load_config(path: &str) -> Result<Self, PrefError> {
         eprintln!("Config path is {}", path);
         let file_buff = match fs::read_to_string(path) {
             Ok(buff) => buff,
-            Err(_) => return create_default_config(path),
+            Err(_) => return create_default_config(path).map_err(|err| PrefError::IoError(err)),
         };
-        Ok(toml::from_str(file_buff.as_str()).expect("Unable to parse configuration file. {}"))
+        match toml::from_str(file_buff.as_str()) {
+            Ok(ret) => Ok(ret),
+            Err(err) => {
+                if err.message().contains("missing field") {
+                    fs::write(
+                        path,
+                        format!(
+                            "{}\n{}",
+                            file_buff,
+                            err.message()
+                                .split_terminator('`')
+                                .last()
+                                .expect("Error adding field to config file")
+                        ),
+                    )
+                    .expect("Error adding field to config file");
+                    Self::load_config(path)
+                } else {
+                    return Err(PrefError::TomlError(err));
+                }
+            }
+        }
     }
     pub fn https_cert_path(&self) -> &Option<String> {
         &self.https_cert_path
