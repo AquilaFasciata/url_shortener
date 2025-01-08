@@ -11,7 +11,7 @@ use axum::{
     body::{Body, Bytes},
     extract::{Path, State},
     http::{
-        header::{self, HeaderValue, CONTENT_LENGTH, CONTENT_TYPE},
+        header::{self, HeaderValue, CONTENT_LENGTH, CONTENT_TYPE, LOCATION, SET_COOKIE},
         response, StatusCode,
     },
     response::{Html, IntoResponse, Response},
@@ -301,10 +301,7 @@ fn image_load(path: &str, ext: &str) -> Response {
         .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR.into_response())
 }
 
-async fn attempt_login(
-    State(pool_and_prefs): State<Arc<PoolAndPrefs>>,
-    body: Bytes,
-) -> Response<Body> {
+async fn attempt_login(State(pool_and_prefs): State<Arc<PoolAndPrefs>>, body: Bytes) -> Response {
     let (pool, prefs) = pool_and_prefs.both();
     let current_time = time::SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -330,9 +327,14 @@ async fn attempt_login(
                 current_time,
             ),
         );
+        let token_str = format!("__Host-jwt={}; Secure", token.finalize(prefs.jwt_secret()));
+        return Response::builder()
+            .header(SET_COOKIE, token_str)
+            .status(StatusCode::TEMPORARY_REDIRECT)
+            .header(LOCATION, "/loggedin.html")
+            .body(Body::empty())
+            .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR.into_response());
     } else {
-        todo!()
+        return StatusCode::OK.into_response();
     }
-
-    return StatusCode::OK.into_response();
 }

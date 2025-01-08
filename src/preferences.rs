@@ -34,14 +34,14 @@ impl Preferences {
     pub fn port(&self) -> u32 {
         self.port
     }
-    pub fn db_ip(&self) -> &String {
-        &self.db_ip
+    pub fn db_ip(&self) -> &str {
+        self.db_ip.as_str()
     }
-    pub fn db_user(&self) -> &String {
-        &self.db_user
+    pub fn db_user(&self) -> &str {
+        self.db_user.as_str()
     }
-    pub fn db_pass(&self) -> &String {
-        &self.db_pass
+    pub fn db_pass(&self) -> &str {
+        self.db_pass.as_str()
     }
     pub fn db_port(&self) -> u32 {
         self.db_port
@@ -49,14 +49,14 @@ impl Preferences {
     pub fn db_pool_size(&self) -> u32 {
         self.db_pool_size
     }
-    pub fn db_name(&self) -> &String {
-        &self.db_name
+    pub fn db_name(&self) -> &str {
+        self.db_name.as_str()
     }
     pub fn url_len(&self) -> usize {
         self.url_len
     }
-    pub fn http_ip(&self) -> &String {
-        &self.http_ip
+    pub fn http_ip(&self) -> &str {
+        self.http_ip.as_str()
     }
     pub fn load_config(path: &str) -> Result<Self, PrefError> {
         eprintln!("Config path is {}", path);
@@ -92,6 +92,9 @@ impl Preferences {
     }
     pub fn https_key_path(&self) -> &Option<String> {
         &self.https_key_path
+    }
+    pub fn jwt_secret(&self) -> &str {
+        self.jwt_secret.as_str()
     }
 }
 
