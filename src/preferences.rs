@@ -71,8 +71,8 @@ impl Preferences {
                     fs::write(
                         path,
                         format!(
-                            "{}\n{}",
-                            file_buff,
+                            "{}\n{} = ",
+                            file_buff.trim_end(),
                             err.message()
                                 .split_terminator('`')
                                 .last()
@@ -80,7 +80,14 @@ impl Preferences {
                         ),
                     )
                     .expect("Error adding field to config file");
-                    Self::load_config(path)
+                    return Self::load_config(path);
+                } else if err.message().contains("invalid string") {
+                    fs::write(
+                        path,
+                        format!("{}\"{}\"", file_buff.trim_end(), "DEFAULTPLEASECHANGE"),
+                    )
+                    .expect("Error changing field in config file");
+                    return Self::load_config(path);
                 } else {
                     return Err(PrefError::TomlError(err));
                 }
