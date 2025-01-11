@@ -221,9 +221,10 @@ mod tests {
         let prefs =
             Preferences::load_config("./config.toml").expect("Error loading config from TOML");
         let conn_url = format!(
-            "postgres://{}:{}@172.17.0.2/testdb",
+            "postgres://{}:{}@172.17.0.2/{}",
             prefs.db_user(),
-            prefs.db_pass()
+            prefs.db_pass(),
+            prefs.db_name(),
         );
         let pool = PgPoolOptions::new()
             .max_connections(prefs.db_pool_size())
