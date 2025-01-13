@@ -12,3 +12,10 @@ on first.
 Running the binary after build should work just fine as long as you stay in the project's root directory,
 though `cargo run --release` is recommended.
 This will create a default `config.toml` that you must update to match your environment. 
+
+### To-Do
+The following are items that I still need to get working:
+- [ ] Login System
+- [ ] URL Management by User
+- [ ] User Permissions
+- [ ] Admin Area
