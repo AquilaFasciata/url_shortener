@@ -232,6 +232,8 @@ mod tests {
             .await
             .expect("Couldn't create connection pool. Are your credentials correct?");
 
+        sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+
         return (pool, prefs);
     }
 

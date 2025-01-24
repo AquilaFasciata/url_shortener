@@ -107,6 +107,10 @@ async fn main() -> Result<(), sqlx::Error> {
         prefs: prefs.clone(),
     };
 
+    sqlx::migrate!("./migrations")
+        .run(pool_and_prefs.pool())
+        .await?;
+
     let arc_pool_prefs: Arc<PoolAndPrefs> = Arc::new(pool_and_prefs);
 
     let app = router
