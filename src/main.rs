@@ -12,7 +12,7 @@ use axum::{
     extract::{Path, State},
     http::{
         header::{self, HeaderValue, CONTENT_LENGTH, CONTENT_TYPE, LOCATION, SET_COOKIE},
-        response, StatusCode,
+        response, HeaderMap, HeaderName, StatusCode,
     },
     response::{Html, IntoResponse, Response},
     routing::{get, post},
@@ -30,6 +30,11 @@ use user::jwt::{self, Jwt, JwtHeader, JwtPayload, SigAlgo};
 mod preferences;
 mod url_db;
 mod user;
+
+enum AuthenticationResponse {
+    Authenticated(UserRow),
+    AuthError(String),
+}
 
 struct PoolAndPrefs {
     pool: PgPool,
@@ -109,7 +114,8 @@ async fn main() -> Result<(), sqlx::Error> {
 
     sqlx::migrate!("./migrations")
         .run(pool_and_prefs.pool())
-        .await?;
+        .await
+        .unwrap_or_else(|_| debug!("Migration already exists, skipping"));
 
     let arc_pool_prefs: Arc<PoolAndPrefs> = Arc::new(pool_and_prefs);
 
@@ -303,6 +309,15 @@ fn image_load(path: &str, ext: &str) -> Response {
         .header(CONTENT_LENGTH, image.len())
         .body(image.into())
         .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR.into_response())
+}
+
+async fn authenticate_request(headers: &HeaderMap) -> AuthenticationResponse {
+    let header_str = match headers.get(HeaderName::from_static("Cookie")) {
+        Some(val) => val.to_str().unwrap_or(""),
+        None => return AuthenticationResponse::AuthError(String::from("No cookie header")),
+    };
+
+    todo!()
 }
 
 async fn attempt_login(State(pool_and_prefs): State<Arc<PoolAndPrefs>>, body: Bytes) -> Response {

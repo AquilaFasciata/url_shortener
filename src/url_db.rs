@@ -211,6 +211,7 @@ mod tests {
     use std::env;
 
     use sqlx::{postgres::PgPoolOptions, PgPool};
+    use tracing::debug;
 
     use crate::preferences::Preferences;
 
@@ -232,7 +233,10 @@ mod tests {
             .await
             .expect("Couldn't create connection pool. Are your credentials correct?");
 
-        sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+        sqlx::migrate!("./migrations")
+            .run(&pool)
+            .await
+            .unwrap_or_else(|_| debug!("Migration already exists, skipping"));
 
         return (pool, prefs);
     }
