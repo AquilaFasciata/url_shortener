@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, BTreeSet, HashMap},
     fs,
     net::SocketAddr,
     sync::Arc,
@@ -316,6 +316,8 @@ async fn authenticate_request(headers: &HeaderMap) -> AuthenticationResponse {
         Some(val) => val.to_str().unwrap_or(""),
         None => return AuthenticationResponse::AuthError(String::from("No cookie header")),
     };
+
+    let cookie_map:  = BTreeMap::new();
 
     todo!()
 }
