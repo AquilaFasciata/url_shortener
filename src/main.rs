@@ -31,6 +31,8 @@ mod preferences;
 mod url_db;
 mod user;
 
+const AUTH_COOKIE_NAME: &str = "Bearer";
+
 pub enum AuthenticationResponse {
     Authenticated(UserRow),
     Error(AuthError),
@@ -316,7 +318,11 @@ fn image_load(path: &str, ext: &str) -> Response {
         .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR.into_response())
 }
 
-async fn authenticate_request(headers: &HeaderMap) -> AuthenticationResponse {
+async fn authenticate_request(
+    State(pools_and_prefs): State<Arc<PoolAndPrefs>>,
+    headers: &HeaderMap,
+) -> AuthenticationResponse {
+    let prefs = pools_and_prefs.prefs();
     let header_str = match headers.get(HeaderName::from_static("Cookie")) {
         Some(val) => val.to_str().unwrap_or(""),
         None => return AuthenticationResponse::Error(AuthError::NoCookieHeader),
@@ -330,6 +336,15 @@ async fn authenticate_request(headers: &HeaderMap) -> AuthenticationResponse {
             None => return AuthenticationResponse::Error(AuthError::InvalidCookieHeader),
         };
     }
+
+    let token = match cookie_map.get(AUTH_COOKIE_NAME) {
+        Some(v) => v,
+        None => return AuthenticationResponse::Error(AuthError::InvalidCookieHeader),
+    };
+    let token = match Jwt::from_str(token, prefs.jwt_secret()) {
+        Ok(v) => v,
+        Err(_) => return AuthenticationResponse::Error(AuthError::InvalidCookieHeader),
+    };
 
     todo!()
 }
