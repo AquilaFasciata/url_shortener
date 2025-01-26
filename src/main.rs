@@ -323,12 +323,13 @@ async fn authenticate_request(headers: &HeaderMap) -> AuthenticationResponse {
     };
 
     let cookie_map: BTreeMap<&str, &str> = BTreeMap::new();
-    header_str.split_terminator(';').map(|pair| {
-        let Some(pair_tupe) = pair.split_once('=') else {
-            return AuthenticationResponse::Error(AuthError::InvalidCookieHeader);
+    let cookie_vec: Vec<&str> = header_str.split_terminator(';').collect();
+    for pair in cookie_vec {
+        let tup = match pair.trim().split_once('=') {
+            Some(val) => val,
+            None => return AuthenticationResponse::Error(AuthError::InvalidCookieHeader),
         };
-        cookie_map.insert(pair_tupe.0, pair_tupe.1);
-    });
+    }
 
     todo!()
 }
