@@ -31,9 +31,14 @@ mod preferences;
 mod url_db;
 mod user;
 
-enum AuthenticationResponse {
+pub enum AuthenticationResponse {
     Authenticated(UserRow),
-    AuthError(String),
+    Error(AuthError),
+}
+
+pub enum AuthError {
+    NoCookieHeader,
+    InvalidCookieHeader,
 }
 
 struct PoolAndPrefs {
@@ -314,10 +319,16 @@ fn image_load(path: &str, ext: &str) -> Response {
 async fn authenticate_request(headers: &HeaderMap) -> AuthenticationResponse {
     let header_str = match headers.get(HeaderName::from_static("Cookie")) {
         Some(val) => val.to_str().unwrap_or(""),
-        None => return AuthenticationResponse::AuthError(String::from("No cookie header")),
+        None => return AuthenticationResponse::Error(AuthError::NoCookieHeader),
     };
 
-    let cookie_map:  = BTreeMap::new();
+    let cookie_map: BTreeMap<&str, &str> = BTreeMap::new();
+    header_str.split_terminator(';').map(|pair| {
+        let Some(pair_tupe) = pair.split_once('=') else {
+            return AuthenticationResponse::Error(AuthError::InvalidCookieHeader);
+        };
+        cookie_map.insert(pair_tupe.0, pair_tupe.1);
+    });
 
     todo!()
 }
