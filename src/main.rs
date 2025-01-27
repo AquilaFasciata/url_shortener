@@ -341,7 +341,7 @@ async fn authenticate_request(
         Some(v) => v,
         None => return AuthenticationResponse::Error(AuthError::InvalidCookieHeader),
     };
-    let token = match Jwt::from_str(token, prefs.jwt_secret()) {
+    let token = match Jwt::from_str_secret(token, prefs.jwt_secret()) {
         Ok(v) => v,
         Err(_) => return AuthenticationResponse::Error(AuthError::InvalidCookieHeader),
     };

@@ -1,5 +1,5 @@
 use core::str;
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
 use askama::Result;
 use base64::{engine::general_purpose::STANDARD_NO_PAD, Engine};
@@ -142,10 +142,13 @@ impl Jwt {
             }
         }
     }
-    /// Creates a JWT object from a base64 string. This does *NOT* implement the FromStr trait
+    /// Creates a JWT object from a base64 string. This is *NOT* the implementation for the FromStr trait
     /// because it returns a tuple with the calculated signature for convience when comparing with
     /// the signature in the provided JWT
-    pub fn from_str(token: &str, secret: &str) -> Result<(Self, String), impl serde::de::Error> {
+    pub fn from_str_secret(
+        token: &str,
+        secret: &str,
+    ) -> Result<(Self, String), impl serde::de::Error> {
         let parts: Vec<&str> = token.split_terminator('.').collect();
         if parts.len() != 3 {
             return Err(JwtError::IncorrectLength);
@@ -199,6 +202,12 @@ impl Jwt {
             return Ok(false);
         }
     }
+}
+
+impl FromStr for Jwt {
+    type Err = JwtError::ParsingError;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {}
 }
 
 impl Clone for Jwt {
