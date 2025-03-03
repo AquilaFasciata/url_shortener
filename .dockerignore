@@ -1,0 +1,33 @@
+# Git-related files
+.git
+.gitignore
+
+# Build artifacts and local dependencies
+target/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Logs and runtime data
+*.log
+logs/
+
+# Environment and configuration files (unless explicitly needed)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Docker-specific files
+Dockerfile
+docker-compose.yml
+Dockerfile.*
+docker-compose.*.yml
+
+# Miscellaneous
+README.md
+LICENSE
+docs/
