@@ -35,12 +35,14 @@ const AUTH_COOKIE_NAME: &str = "Bearer";
 
 pub enum AuthenticationResponse {
     Authenticated(UserRow),
+    NotAuthenticated,
     Error(AuthError),
 }
 
 pub enum AuthError {
     NoCookieHeader,
     InvalidCookieHeader,
+    SqlError,
 }
 
 struct PoolAndPrefs {
@@ -328,25 +330,35 @@ async fn authenticate_request(
         None => return AuthenticationResponse::Error(AuthError::NoCookieHeader),
     };
 
-    let cookie_map: BTreeMap<&str, &str> = BTreeMap::new();
+    let mut cookie_map: BTreeMap<&str, &str> = BTreeMap::new();
     let cookie_vec: Vec<&str> = header_str.split_terminator(';').collect();
     for pair in cookie_vec {
         let tup = match pair.trim().split_once('=') {
             Some(val) => val,
             None => return AuthenticationResponse::Error(AuthError::InvalidCookieHeader),
         };
+
+        cookie_map.insert(tup.0, tup.1);
     }
 
     let token = match cookie_map.get(AUTH_COOKIE_NAME) {
         Some(v) => v,
         None => return AuthenticationResponse::Error(AuthError::InvalidCookieHeader),
     };
-    let token = match Jwt::from_str_secret(token, prefs.jwt_secret()) {
+    let (token, orig_hash) = match Jwt::from_str_secret(token, prefs.jwt_secret()) {
         Ok(v) => v,
         Err(_) => return AuthenticationResponse::Error(AuthError::InvalidCookieHeader),
     };
 
-    todo!()
+    if token.signature().unwrap_or(String::new()) == orig_hash {
+        let user =
+            match user::retrieve_user_by_id(token.payload().sub(), pools_and_prefs.pool()).await {
+                Ok(v) => v,
+                Err(_) => return AuthenticationResponse::Error(AuthError::SqlError),
+            };
+        return AuthenticationResponse::Authenticated(user);
+    }
+    return AuthenticationResponse::NotAuthenticated;
 }
 
 async fn attempt_login(State(pool_and_prefs): State<Arc<PoolAndPrefs>>, body: Bytes) -> Response {

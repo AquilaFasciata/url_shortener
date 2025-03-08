@@ -27,6 +27,3 @@ zeroize = "1.8.1"
 
 [dev-dependencies]
 axum = { version = "0.7.5", features = ["macros"] }
-
-[env]
-RUST_TEST_THREADS = "1"

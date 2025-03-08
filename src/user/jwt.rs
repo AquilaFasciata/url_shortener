@@ -133,6 +133,9 @@ impl Jwt {
     pub fn payload(&self) -> &JwtPayload {
         &self.payload
     }
+    pub fn signature(&self) -> Option<String> {
+        self.signature.clone()
+    }
     pub fn finalize(&self, secret: &str) -> String {
         match self.header().alg() {
             SigAlgo::HS256 => return self.finalize_hs256(secret),
@@ -284,6 +287,10 @@ impl JwtPayload {
             email,
             iat,
         }
+    }
+
+    pub fn sub(&self) -> i64 {
+        self.sub.clone()
     }
 }
 
