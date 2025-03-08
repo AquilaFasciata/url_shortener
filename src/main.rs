@@ -2,7 +2,6 @@ use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
     fs,
     net::SocketAddr,
-    sync::Arc,
     time::{self, UNIX_EPOCH},
 };
 
@@ -23,9 +22,10 @@ use preferences::Preferences;
 use regex::Regex;
 use serde::Deserialize;
 use sqlx::{postgres::PgPoolOptions, PgPool};
+use tokio;
 use tracing::{debug, info, Level};
 use url_db::{UrlRow, UserRow};
-use user::jwt::{self, Jwt, JwtHeader, JwtPayload, SigAlgo};
+use user::jwt::{Jwt, JwtHeader, JwtPayload, SigAlgo};
 
 mod preferences;
 mod url_db;
@@ -126,16 +126,16 @@ async fn main() -> Result<(), sqlx::Error> {
         .await
         .unwrap_or_else(|_| debug!("Migration already exists, skipping"));
 
-    let arc_pool_prefs: Arc<PoolAndPrefs> = Arc::new(pool_and_prefs);
+    let arc_pool_prefs = Box::leak(Box::new(pool_and_prefs));
 
     let app = router
         .route("/", get(root))
         .route("/:extra", get(subdir_handler))
-        .with_state(arc_pool_prefs.clone())
+        .with_state(arc_pool_prefs)
         .route("/", post(post_new_url))
-        .with_state(arc_pool_prefs.clone())
+        .with_state(arc_pool_prefs)
         .route("/:extra/:extra", get(subdir_handler))
-        .with_state(arc_pool_prefs.clone());
+        .with_state(arc_pool_prefs);
     let address = SocketAddr::from(([127, 0, 0, 1], u16::try_from(prefs.port()).unwrap()));
     info!(
         "Listening on {}:{} for connections!",
@@ -161,10 +161,7 @@ async fn main() -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-async fn post_new_url(
-    State(pool_and_prefs): State<Arc<PoolAndPrefs>>,
-    body: Bytes,
-) -> Response<Body> {
+async fn post_new_url(State(pool_and_prefs): State<&PoolAndPrefs>, body: Bytes) -> Response<Body> {
     let prefs = pool_and_prefs.prefs();
     let longurl: HashMap<String, String> =
         serde_html_form::from_bytes(&body).expect("Error deserializing form response");
@@ -261,10 +258,7 @@ async fn consume_short_url(Path(url): Path<String>, State(pool): State<&PgPool>)
 /// This theoretically handles all of the incoming requests. If it matches a file extention (html
 /// and css at the moment) then it returns that from the server. Otherwise, it will assume it is a
 /// short url and send it to the handler.
-async fn subdir_handler(
-    Path(path): Path<String>,
-    State(pool): State<Arc<PoolAndPrefs>>,
-) -> Response {
+async fn subdir_handler(Path(path): Path<String>, State(pool): State<&PoolAndPrefs>) -> Response {
     const FILE_EXTENTIONS: [&str; 10] = [
         "html",
         "css",
@@ -321,7 +315,7 @@ fn image_load(path: &str, ext: &str) -> Response {
 }
 
 async fn authenticate_request(
-    State(pools_and_prefs): State<Arc<PoolAndPrefs>>,
+    State(pools_and_prefs): State<&PoolAndPrefs>,
     headers: &HeaderMap,
 ) -> AuthenticationResponse {
     let prefs = pools_and_prefs.prefs();
@@ -361,7 +355,7 @@ async fn authenticate_request(
     return AuthenticationResponse::NotAuthenticated;
 }
 
-async fn attempt_login(State(pool_and_prefs): State<Arc<PoolAndPrefs>>, body: Bytes) -> Response {
+async fn attempt_login(State(pool_and_prefs): State<&PoolAndPrefs>, body: Bytes) -> Response {
     let (pool, prefs) = pool_and_prefs.both();
     let current_time = time::SystemTime::now()
         .duration_since(UNIX_EPOCH)
