@@ -144,7 +144,8 @@ impl Jwt {
     }
     /// Creates a JWT object from a base64 string. This is *NOT* the implementation for the FromStr trait
     /// because it returns a tuple with the calculated signature for convience when comparing with
-    /// the signature in the provided JWT
+    /// the signature in the provided JWT. The returned string is the original hash from the
+    /// request, and the returned token contains the computed hash.  
     pub fn from_str_secret(
         token: &str,
         secret: &str,
