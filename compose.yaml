@@ -4,4 +4,8 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./config.toml:/app/config.toml
+      - type: bind
+        source: ./config.toml
+        target: /usr/local/config.toml
+  db:
+    image: "postgres:14"
