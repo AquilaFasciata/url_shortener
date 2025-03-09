@@ -105,7 +105,7 @@ impl Preferences {
     }
 }
 
-fn create_default_config(path: &str) -> Result<Preferences, std::io::Error> {
+pub fn create_default_config(path: &str) -> Result<Preferences, std::io::Error> {
     let new_pref = Preferences {
         url_len: 6,
         domain_name: String::from("localhost"),

@@ -1,6 +1,6 @@
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
-    fs,
+    env, fs,
     net::SocketAddr,
     time::{self, UNIX_EPOCH},
 };
@@ -21,7 +21,7 @@ use axum_server::tls_rustls::RustlsConfig;
 use preferences::Preferences;
 use regex::Regex;
 use serde::Deserialize;
-use sqlx::{postgres::PgPoolOptions, PgPool};
+use sqlx::{postgres::PgPoolOptions, IntoArguments, PgPool};
 use tokio;
 use tracing::{debug, info, Level};
 use url_db::{UrlRow, UserRow};
@@ -79,6 +79,11 @@ impl<'a> LoginPayload<'a> {
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
+    let args: Vec<String> = env::args().collect();
+    if args.contains(&String::from("config")) {
+        preferences::create_default_config("config.toml");
+        return Ok(());
+    }
     let prefs = Preferences::load_config("config.toml").expect("Error loading configuration.");
     let subscriber = tracing_subscriber::fmt()
         .with_max_level(Level::DEBUG)
