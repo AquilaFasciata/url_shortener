@@ -8,6 +8,7 @@ RUN cargo run --release -- config
 FROM debian:bookworm-slim
 COPY --from=builder /usr/src/url_shortener/target/release/url_shortener /usr/local/bin/url_shortener
 COPY --from=builder /usr/src/url_shortener/config.toml /usr/local/config.toml
+COPY --from=builder /usr/src/url_shortener/html /usr/local/html
 
 WORKDIR /usr/local/
 

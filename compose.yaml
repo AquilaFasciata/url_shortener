@@ -9,3 +9,5 @@ services:
         target: /usr/local/config.toml
   db:
     image: "postgres:14"
+    environment:
+        POSTGRES_PASSWORD: password_here
