@@ -349,6 +349,9 @@ async fn authenticate_request(
         Err(_) => return AuthenticationResponse::Error(AuthError::InvalidCookieHeader),
     };
 
+    if orig_hash.is_empty() {
+        return AuthenticationResponse::NotAuthenticated;
+    };
     if token.signature().unwrap_or(String::new()) == orig_hash {
         let user =
             match user::retrieve_user_by_id(token.payload().sub(), pools_and_prefs.pool()).await {
