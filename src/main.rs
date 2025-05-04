@@ -1,5 +1,5 @@
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{BTreeMap, HashMap},
     env, fs,
     net::SocketAddr,
     time::{self, UNIX_EPOCH},
@@ -22,11 +22,10 @@ use jsonwebtoken::{DecodingKey, EncodingKey};
 use preferences::Preferences;
 use regex::Regex;
 use serde::Deserialize;
-use sqlx::{postgres::PgPoolOptions, IntoArguments, PgPool};
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use tokio;
 use tracing::{debug, info, Level};
 use url_db::{UrlRow, UserRow};
-use user::jwt::{Jwt, JwtHeader, JwtPayload, SigAlgo};
 
 mod preferences;
 mod url_db;
@@ -60,7 +59,7 @@ impl MasterState {
     fn prefs(&self) -> &Preferences {
         &self.prefs
     }
-    fn both(&self) -> (&PgPool, &Preferences) {
+    fn pool_and_prefs(&self) -> (&PgPool, &Preferences) {
         (&self.pool, &self.prefs)
     }
 
@@ -142,28 +141,31 @@ async fn main() -> Result<(), sqlx::Error> {
     let encoding_key = EncodingKey::from_secret(prefs.jwt_secret().as_bytes());
     let decoding_key = DecodingKey::from_secret(prefs.jwt_secret().as_bytes());
 
-    let pool_and_prefs = MasterState {
+    let master_state = MasterState {
         pool: pool.expect("Error creating connection pool. {}"),
         prefs: prefs.clone(),
         encoding_key,
         decoding_key,
     };
+    let box_master_state = Box::leak(Box::new(master_state));
 
     sqlx::migrate!("./migrations")
-        .run(pool_and_prefs.pool())
+        .run(box_master_state.pool())
         .await
         .unwrap_or_else(|_| debug!("Migration already exists, skipping"));
 
-    let box_pool_prefs = Box::leak(Box::new(pool_and_prefs));
+    /*************
+     * Main Loop *
+     *************/
 
     let app = router
         .route("/", get(root))
         .route("/:extra", get(subdir_handler))
-        .with_state(box_pool_prefs)
+        .with_state(box_master_state)
         .route("/", post(post_new_url))
-        .with_state(box_pool_prefs)
+        .with_state(box_master_state)
         .route("/:extra/:extra", get(subdir_handler))
-        .with_state(box_pool_prefs);
+        .with_state(box_master_state);
     let address = SocketAddr::from(([127, 0, 0, 1], u16::try_from(prefs.port()).unwrap()));
     info!(
         "Listening on {}:{} for connections!",
@@ -388,8 +390,8 @@ async fn authenticate_request(
     return AuthenticationResponse::NotAuthenticated;
 }
 
-async fn attempt_login(State(pool_and_prefs): State<&MasterState>, body: Bytes) -> Response {
-    let (pool, prefs) = pool_and_prefs.both();
+async fn attempt_login(State(master_state): State<&MasterState>, body: Bytes) -> Response {
+    let (pool, prefs) = master_state.pool_and_prefs();
     let current_time = time::SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
