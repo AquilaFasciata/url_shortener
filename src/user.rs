@@ -2,7 +2,7 @@ use rand::{distributions::Alphanumeric, Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use sha2::{Digest, Sha512};
 use tracing::{debug, instrument};
-use zeroize::Zeroizing;
+use zeroize::{Zeroize, Zeroizing};
 
 use crate::url_db::UserRow;
 
