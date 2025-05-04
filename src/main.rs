@@ -18,6 +18,7 @@ use axum::{
     Router,
 };
 use axum_server::tls_rustls::RustlsConfig;
+use jsonwebtoken::{DecodingKey, EncodingKey};
 use preferences::Preferences;
 use regex::Regex;
 use serde::Deserialize;
@@ -45,12 +46,14 @@ pub enum AuthError {
     SqlError,
 }
 
-struct PoolAndPrefs {
+struct MasterState {
     pool: PgPool,
     prefs: Preferences,
+    encoding_key: EncodingKey,
+    decoding_key: DecodingKey,
 }
 
-impl PoolAndPrefs {
+impl MasterState {
     fn pool(&self) -> &PgPool {
         &self.pool
     }
@@ -59,6 +62,14 @@ impl PoolAndPrefs {
     }
     fn both(&self) -> (&PgPool, &Preferences) {
         (&self.pool, &self.prefs)
+    }
+
+    fn encoding_key(&self) -> &EncodingKey {
+        &self.encoding_key
+    }
+
+    fn decoding_key(&self) -> &DecodingKey {
+        &self.decoding_key
     }
 }
 
@@ -79,6 +90,9 @@ impl<'a> LoginPayload<'a> {
 
 #[tokio::main]
 async fn main() -> Result<(), sqlx::Error> {
+    /*****************
+     * Initalization *
+     *****************/
     let args: Vec<String> = env::args().collect();
     if args.contains(&String::from("config")) {
         preferences::create_default_config("config.toml");
@@ -98,6 +112,7 @@ async fn main() -> Result<(), sqlx::Error> {
     let key = prefs.https_key_path();
 
     let router = Router::new();
+
     let url = format!(
         "postgres://{}:{}@{}/{}",
         prefs.db_user(),
@@ -111,19 +126,27 @@ async fn main() -> Result<(), sqlx::Error> {
         .connect(url.as_str());
     let pool: Result<PgPool, sqlx::Error>;
 
-    let mut config: Option<RustlsConfig> = None;
+    let mut tls_config: Option<RustlsConfig> = None;
     if cert.is_some() && key.is_some() {
+        // If there are keys, populate them...
         let temp = RustlsConfig::from_pem_file(cert.as_ref().unwrap(), key.as_ref().unwrap());
         let conf_fut;
-        (conf_fut, pool) = tokio::join!(temp, pool_fut);
-        config = Some(conf_fut.unwrap());
+        (conf_fut, pool) = tokio::join!(temp, pool_fut); // ...and join the pool
+        tls_config = Some(conf_fut.unwrap());
     } else {
+        // Otherwise, just wait for the pool
         pool = pool_fut.await;
     }
 
-    let pool_and_prefs = PoolAndPrefs {
+    // JWT Token Keys
+    let encoding_key = EncodingKey::from_secret(prefs.jwt_secret().as_bytes());
+    let decoding_key = DecodingKey::from_secret(prefs.jwt_secret().as_bytes());
+
+    let pool_and_prefs = MasterState {
         pool: pool.expect("Error creating connection pool. {}"),
         prefs: prefs.clone(),
+        encoding_key,
+        decoding_key,
     };
 
     sqlx::migrate!("./migrations")
@@ -131,16 +154,16 @@ async fn main() -> Result<(), sqlx::Error> {
         .await
         .unwrap_or_else(|_| debug!("Migration already exists, skipping"));
 
-    let arc_pool_prefs = Box::leak(Box::new(pool_and_prefs));
+    let box_pool_prefs = Box::leak(Box::new(pool_and_prefs));
 
     let app = router
         .route("/", get(root))
         .route("/:extra", get(subdir_handler))
-        .with_state(arc_pool_prefs)
+        .with_state(box_pool_prefs)
         .route("/", post(post_new_url))
-        .with_state(arc_pool_prefs)
+        .with_state(box_pool_prefs)
         .route("/:extra/:extra", get(subdir_handler))
-        .with_state(arc_pool_prefs);
+        .with_state(box_pool_prefs);
     let address = SocketAddr::from(([127, 0, 0, 1], u16::try_from(prefs.port()).unwrap()));
     info!(
         "Listening on {}:{} for connections!",
@@ -148,8 +171,8 @@ async fn main() -> Result<(), sqlx::Error> {
         prefs.port()
     );
 
-    if config.is_some() {
-        axum_server::bind_rustls(address, config.unwrap())
+    if tls_config.is_some() {
+        axum_server::bind_rustls(address, tls_config.unwrap())
             .serve(app.into_make_service())
             .await
             .unwrap();
@@ -166,7 +189,7 @@ async fn main() -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-async fn post_new_url(State(pool_and_prefs): State<&PoolAndPrefs>, body: Bytes) -> Response<Body> {
+async fn post_new_url(State(pool_and_prefs): State<&MasterState>, body: Bytes) -> Response<Body> {
     let prefs = pool_and_prefs.prefs();
     let longurl: HashMap<String, String> =
         serde_html_form::from_bytes(&body).expect("Error deserializing form response");
@@ -263,7 +286,7 @@ async fn consume_short_url(Path(url): Path<String>, State(pool): State<&PgPool>)
 /// This theoretically handles all of the incoming requests. If it matches a file extention (html
 /// and css at the moment) then it returns that from the server. Otherwise, it will assume it is a
 /// short url and send it to the handler.
-async fn subdir_handler(Path(path): Path<String>, State(pool): State<&PoolAndPrefs>) -> Response {
+async fn subdir_handler(Path(path): Path<String>, State(pool): State<&MasterState>) -> Response {
     const FILE_EXTENTIONS: [&str; 10] = [
         "html",
         "css",
@@ -320,7 +343,7 @@ fn image_load(path: &str, ext: &str) -> Response {
 }
 
 async fn authenticate_request(
-    State(pools_and_prefs): State<&PoolAndPrefs>,
+    State(pools_and_prefs): State<&MasterState>,
     headers: &HeaderMap,
 ) -> AuthenticationResponse {
     let prefs = pools_and_prefs.prefs();
@@ -356,14 +379,16 @@ async fn authenticate_request(
         let user =
             match user::retrieve_user_by_id(token.payload().sub(), pools_and_prefs.pool()).await {
                 Ok(v) => v,
-                Err(_) => return AuthenticationResponse::Error(AuthError::SqlError),
+                Err(_) => return AuthenticationResponse::Error(AuthError::SqlError), // TODO: Make
+                                                                                     // this more
+                                                                                     // explicit
             };
         return AuthenticationResponse::Authenticated(user);
     }
     return AuthenticationResponse::NotAuthenticated;
 }
 
-async fn attempt_login(State(pool_and_prefs): State<&PoolAndPrefs>, body: Bytes) -> Response {
+async fn attempt_login(State(pool_and_prefs): State<&MasterState>, body: Bytes) -> Response {
     let (pool, prefs) = pool_and_prefs.both();
     let current_time = time::SystemTime::now()
         .duration_since(UNIX_EPOCH)

@@ -6,8 +6,6 @@ use zeroize::Zeroizing;
 
 use crate::url_db::UserRow;
 
-pub mod jwt;
-
 /// Creates a new user from user, pass, and email, inserts into DB, and returns the created row or
 /// sql error
 pub async fn new_user(
