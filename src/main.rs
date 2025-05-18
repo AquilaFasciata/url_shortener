@@ -18,7 +18,7 @@ use axum::{
     Router,
 };
 use axum_server::tls_rustls::RustlsConfig;
-use jsonwebtoken::{DecodingKey, EncodingKey};
+use jsonwebtoken::{DecodingKey, EncodingKey, Validation};
 use preferences::Preferences;
 use regex::Regex;
 use serde::Deserialize;
@@ -50,6 +50,7 @@ struct MasterState {
     prefs: Preferences,
     encoding_key: EncodingKey,
     decoding_key: DecodingKey,
+    validation: Validation,
 }
 
 impl MasterState {
@@ -69,6 +70,9 @@ impl MasterState {
 
     fn decoding_key(&self) -> &DecodingKey {
         &self.decoding_key
+    }
+    fn validation(&self) -> &Validation {
+        &self.validation
     }
 }
 
@@ -141,11 +145,14 @@ async fn main() -> Result<(), sqlx::Error> {
     let encoding_key = EncodingKey::from_secret(prefs.jwt_secret().as_bytes());
     let decoding_key = DecodingKey::from_secret(prefs.jwt_secret().as_bytes());
 
+    let validation = Validation::default();
+
     let master_state = MasterState {
         pool: pool.expect("Error creating connection pool. {}"),
         prefs: prefs.clone(),
         encoding_key,
         decoding_key,
+        validation,
     };
     let box_master_state = Box::leak(Box::new(master_state));
 
@@ -354,6 +361,7 @@ async fn authenticate_request(
         None => return AuthenticationResponse::Error(AuthError::NoCookieHeader),
     };
 
+    // Decode the cookies in the request and
     let mut cookie_map: BTreeMap<&str, &str> = BTreeMap::new();
     let cookie_vec: Vec<&str> = header_str.split_terminator(';').collect();
     for pair in cookie_vec {
@@ -369,11 +377,11 @@ async fn authenticate_request(
         Some(v) => v,
         None => return AuthenticationResponse::Error(AuthError::InvalidCookieHeader),
     };
-    let (token, orig_hash) = match Jwt::from_str_secret(token, prefs.jwt_secret()) {
-        Ok(v) => v,
-        Err(_) => return AuthenticationResponse::Error(AuthError::InvalidCookieHeader),
-    };
-
+    let token = jsonwebtoken::decode(
+        token,
+        pools_and_prefs.decoding_key(),
+        pools_and_prefs.validation(),
+    );
     if orig_hash.is_empty() {
         return AuthenticationResponse::NotAuthenticated;
     };
