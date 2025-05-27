@@ -26,11 +26,11 @@ use serde::Deserialize;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tokio;
 use tracing::{debug, info, Level};
-use url_db::{UrlRow, UserRow};
+use db::{UrlRow, UserRow};
 
 mod auth;
 mod preferences;
-mod url_db;
+mod db;
 mod user;
 
 const AUTH_COOKIE_NAME: &str = "Bearer";
@@ -204,7 +204,7 @@ async fn post_new_url(State(pool_and_prefs): State<&MasterState>, body: Bytes) -
     let prefs = pool_and_prefs.prefs();
     let longurl: HashMap<String, String> =
         serde_html_form::from_bytes(&body).expect("Error deserializing form response");
-    let new_url = url_db::create_url(
+    let new_url = db::create_url(
         &longurl["url"],
         None,
         pool_and_prefs.pool(),
@@ -273,12 +273,12 @@ async fn derivative(Path(extra): Path<String>) -> Response {
 }
 
 async fn consume_short_url(Path(url): Path<String>, State(pool): State<&PgPool>) -> Response {
-    let mut url_row: UrlRow = match url_db::retrieve_url_obj(url.as_str(), &pool).await {
+    let mut url_row: UrlRow = match db::retrieve_url_obj(url.as_str(), &pool).await {
         Ok(row) => row,
         Err(_) => return not_found_handler().await,
     };
 
-    url_db::incr_url_clicks(&mut url_row, pool).await;
+    db::incr_url_clicks(&mut url_row, pool).await;
 
     let long = if url_row.long_url().starts_with("http") || url_row.long_url().starts_with("https")
     {
@@ -387,7 +387,7 @@ async fn authenticate_request(
     if token.is_err() {
         return AuthenticationResponse::NotAuthenticated;
     };
-    let user = token;
+    let user = UserRow::hashed_pw_mutk
     todo!()
 }
 
