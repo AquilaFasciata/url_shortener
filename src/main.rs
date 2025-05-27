@@ -6,6 +6,7 @@ use std::{
 };
 
 use askama::Template;
+use auth::Claims;
 use axum::{
     body::{Body, Bytes},
     extract::{Path, State},
@@ -18,7 +19,7 @@ use axum::{
     Router,
 };
 use axum_server::tls_rustls::RustlsConfig;
-use jsonwebtoken::{DecodingKey, EncodingKey, Validation};
+use jsonwebtoken::{DecodingKey, EncodingKey, TokenData, Validation};
 use preferences::Preferences;
 use regex::Regex;
 use serde::Deserialize;
@@ -27,6 +28,7 @@ use tokio;
 use tracing::{debug, info, Level};
 use url_db::{UrlRow, UserRow};
 
+mod auth;
 mod preferences;
 mod url_db;
 mod user;
@@ -377,25 +379,16 @@ async fn authenticate_request(
         Some(v) => v,
         None => return AuthenticationResponse::Error(AuthError::InvalidCookieHeader),
     };
-    let token = jsonwebtoken::decode(
+    let token: Result<TokenData<Claims>, _> = jsonwebtoken::decode(
         token,
         pools_and_prefs.decoding_key(),
         pools_and_prefs.validation(),
     );
-    if orig_hash.is_empty() {
+    if token.is_err() {
         return AuthenticationResponse::NotAuthenticated;
     };
-    if token.signature().unwrap_or(String::new()) == orig_hash {
-        let user =
-            match user::retrieve_user_by_id(token.payload().sub(), pools_and_prefs.pool()).await {
-                Ok(v) => v,
-                Err(_) => return AuthenticationResponse::Error(AuthError::SqlError), // TODO: Make
-                                                                                     // this more
-                                                                                     // explicit
-            };
-        return AuthenticationResponse::Authenticated(user);
-    }
-    return AuthenticationResponse::NotAuthenticated;
+    let user = token;
+    todo!()
 }
 
 async fn attempt_login(State(master_state): State<&MasterState>, body: Bytes) -> Response {
