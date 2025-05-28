@@ -4,7 +4,7 @@ use sha2::{Digest, Sha512};
 use tracing::{debug, instrument};
 use zeroize::{Zeroize, Zeroizing};
 
-use crate::url_db::UserRow;
+use crate::db::UserRow;
 
 /// Creates a new user from user, pass, and email, inserts into DB, and returns the created row or
 /// sql error

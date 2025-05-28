@@ -4,8 +4,10 @@ use rand::{
     distributions::{Alphanumeric, DistString},
     prelude::*,
 };
-use sqlx::{postgres::PgQueryResult, FromRow};
+use sqlx::{postgres::PgQueryResult, FromRow, PgPool};
 use std::{result::Result, str};
+
+use crate::user;
 
 #[derive(FromRow, Debug, Clone, Template)]
 #[template(path = "url-table-row.html")]
@@ -64,6 +66,9 @@ impl UserRow {
             hashed_pw,
             email,
         }
+    }
+    pub async fn from_id(id: i64, pool: &PgPool) -> Result<Self, sqlx::Error> {
+        user::retrieve_user_by_id(id, pool).await
     }
 }
 
