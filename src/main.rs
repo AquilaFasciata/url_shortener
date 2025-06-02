@@ -2,7 +2,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     env, fs,
     net::SocketAddr,
-    time::{self, UNIX_EPOCH},
+    time::{self, SystemTime, UNIX_EPOCH},
 };
 
 use askama::Template;
@@ -19,21 +19,22 @@ use axum::{
     Router,
 };
 use axum_server::tls_rustls::RustlsConfig;
-use jsonwebtoken::{DecodingKey, EncodingKey, TokenData, Validation};
+use db::{UrlRow, UserRow};
+use jsonwebtoken::{encode, Algorithm, DecodingKey, EncodingKey, Header, TokenData, Validation};
 use preferences::Preferences;
 use regex::Regex;
 use serde::Deserialize;
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tokio;
 use tracing::{debug, info, Level};
-use db::{UrlRow, UserRow};
 
 mod auth;
-mod preferences;
 mod db;
+mod preferences;
 mod user;
 
 const AUTH_COOKIE_NAME: &str = "Bearer";
+const SESSION_TIME: u64 = 60 * 60 * 2; // Session time in seconds
 
 pub enum AuthenticationResponse {
     Authenticated(UserRow),
@@ -174,6 +175,8 @@ async fn main() -> Result<(), sqlx::Error> {
         .route("/", post(post_new_url))
         .with_state(box_master_state)
         .route("/:extra/:extra", get(subdir_handler))
+        .with_state(box_master_state)
+        .route("/login", post(authenticate_request))
         .with_state(box_master_state);
     let address = SocketAddr::from(([127, 0, 0, 1], u16::try_from(prefs.port()).unwrap()));
     info!(
@@ -324,6 +327,8 @@ async fn subdir_handler(Path(path): Path<String>, State(pool): State<&MasterStat
     }
 }
 
+fn private_area(Path(path): Path<String>, State(state): State<&MasterState>) -> Response {}
+
 fn content_response(contents: Vec<u8>, content_type: HeaderValue) -> Response {
     let mut resp = Body::from(contents).into_response();
     resp.headers_mut()
@@ -357,7 +362,6 @@ async fn authenticate_request(
     State(pools_and_prefs): State<&MasterState>,
     headers: &HeaderMap,
 ) -> AuthenticationResponse {
-    let prefs = pools_and_prefs.prefs();
     let header_str = match headers.get(HeaderName::from_static("Cookie")) {
         Some(val) => val.to_str().unwrap_or(""),
         None => return AuthenticationResponse::Error(AuthError::NoCookieHeader),
@@ -387,16 +391,22 @@ async fn authenticate_request(
     if token.is_err() {
         return AuthenticationResponse::NotAuthenticated;
     };
-    let user = UserRow::hashed_pw_mutk
-    todo!()
+    let user = UserRow::from_id(token.unwrap().claims.sub(), pools_and_prefs.pool())
+        .await
+        .unwrap();
+    return AuthenticationResponse::Authenticated(user);
+}
+
+fn expiration_time() -> u64 {
+    let right_now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    return right_now + SESSION_TIME;
 }
 
 async fn attempt_login(State(master_state): State<&MasterState>, body: Bytes) -> Response {
     let (pool, prefs) = master_state.pool_and_prefs();
-    let current_time = time::SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs();
     let login_data: LoginPayload = match serde_html_form::from_bytes(&body) {
         Ok(parsed) => parsed,
         Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
@@ -408,16 +418,23 @@ async fn attempt_login(State(master_state): State<&MasterState>, body: Bytes) ->
     };
 
     if user::verify_pw(login_data.password(), &user).await {
-        let token = Jwt::new(
-            JwtHeader::new(SigAlgo::HS256, String::from("JWT")),
-            JwtPayload::new(
-                *user.id(),
-                user.username().to_string(),
-                user.email().to_string(),
-                current_time,
-            ),
+        let header = Header::new(Algorithm::HS256);
+        let claims = Claims::new(
+            // TODO: This could be better
+            user.id(),
+            user.username().clone(),
+            user.email().clone(),
+            expiration_time(),
         );
-        let token_str = format!("__Host-jwt={}; Secure", token.finalize(prefs.jwt_secret()));
+        let token = encode(
+            &header,
+            &claims,
+            &EncodingKey::from_secret(prefs.jwt_secret().as_bytes()),
+        );
+        if token.is_err() {
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+        let token_str = format!("__Host-jwt={}; Secure", token.unwrap());
         return Response::builder()
             .header(SET_COOKIE, token_str)
             .status(StatusCode::TEMPORARY_REDIRECT)
@@ -425,6 +442,6 @@ async fn attempt_login(State(master_state): State<&MasterState>, body: Bytes) ->
             .body(Body::empty())
             .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR.into_response());
     } else {
-        return StatusCode::OK.into_response();
+        return StatusCode::UNAUTHORIZED.into_response();
     }
 }

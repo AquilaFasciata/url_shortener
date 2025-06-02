@@ -50,8 +50,8 @@ impl UserRow {
     pub fn email_mut(&mut self) -> &mut String {
         &mut self.email
     }
-    pub fn id(&self) -> &i64 {
-        &self.id
+    pub fn id(&self) -> i64 {
+        self.id
     }
     pub fn id_mut(&mut self) -> &mut i64 {
         &mut self.id

@@ -5,21 +5,21 @@ pub struct Claims {
     sub: i64,      // User ID in Postgres
     name: String,  // Username
     email: String, // Email
-    iat: u64,      // Issued at time
+    exp: u64,      // Issued at time
 }
 
 impl Claims {
-    pub fn new(sub: i64, name: String, email: String, iat: u64) -> Self {
+    pub fn new(sub: i64, name: String, email: String, exp: u64) -> Self {
         Self {
             sub,
             name,
             email,
-            iat,
+            exp,
         }
     }
 
     pub fn iat(&self) -> u64 {
-        self.iat
+        self.exp
     }
 
     pub fn sub(&self) -> i64 {
@@ -34,4 +34,3 @@ impl Claims {
         &self.name
     }
 }
-

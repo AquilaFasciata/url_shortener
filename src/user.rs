@@ -2,7 +2,7 @@ use rand::{distributions::Alphanumeric, Rng, SeedableRng};
 use rand_chacha::ChaChaRng;
 use sha2::{Digest, Sha512};
 use tracing::{debug, instrument};
-use zeroize::{Zeroize, Zeroizing};
+use zeroize::Zeroizing;
 
 use crate::db::UserRow;
 
@@ -203,7 +203,7 @@ mod tests {
         .await
         .unwrap();
 
-        let returned_user = retrieve_user_by_id(*user.id(), &pool).await.unwrap();
+        let returned_user = retrieve_user_by_id(user.id(), &pool).await.unwrap();
         assert_eq!(format!("{:?}", user), format!("{:?}", returned_user));
     }
 }
