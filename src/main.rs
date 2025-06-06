@@ -2,6 +2,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     env, fs,
     net::SocketAddr,
+    str::FromStr,
     time::{self, SystemTime, UNIX_EPOCH},
 };
 
@@ -9,10 +10,10 @@ use askama::Template;
 use auth::Claims;
 use axum::{
     body::{Body, Bytes},
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{
         header::{self, HeaderValue, CONTENT_LENGTH, CONTENT_TYPE, LOCATION, SET_COOKIE},
-        response, HeaderMap, HeaderName, StatusCode,
+        response, HeaderMap, HeaderName, Request, StatusCode,
     },
     response::{Html, IntoResponse, Response},
     routing::{get, post},
@@ -178,7 +179,8 @@ async fn main() -> Result<(), sqlx::Error> {
         .with_state(box_master_state)
         .route("/login", post(authenticate_request))
         .with_state(box_master_state);
-    let address = SocketAddr::from(([127, 0, 0, 1], u16::try_from(prefs.port()).unwrap()));
+    let address =
+        SocketAddr::from_str(format!("{}:{}", prefs.http_ip(), prefs.port()).as_str()).unwrap();
     info!(
         "Listening on {}:{} for connections!",
         prefs.http_ip(),
@@ -327,7 +329,12 @@ async fn subdir_handler(Path(path): Path<String>, State(pool): State<&MasterStat
     }
 }
 
-fn private_area(Path(path): Path<String>, State(state): State<&MasterState>) -> Response {}
+fn private_area(
+    Path(path): Path<String>,
+    State(state): State<&MasterState>,
+    headers: &HeaderMap,
+) -> Response {
+}
 
 fn content_response(contents: Vec<u8>, content_type: HeaderValue) -> Response {
     let mut resp = Body::from(contents).into_response();
@@ -356,6 +363,29 @@ fn image_load(path: &str, ext: &str) -> Response {
         .header(CONTENT_LENGTH, image.len())
         .body(image.into())
         .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR.into_response())
+}
+
+async fn login_request(
+    State(pools_and_prefs): State<&MasterState>,
+    headers: &HeaderMap,
+    Query(query): Query<(&str, &str)>,
+) -> Response {
+    match authenticate_request(State(&pools_and_prefs), headers).await {
+        AuthenticationResponse::Authenticated(user_row) => {
+            let new_uri = match query.0 {
+                "dest" => query.1,
+                _ => return StatusCode::BAD_REQUEST.into_response(),
+            };
+
+            return Response::builder()
+                .header(header::LOCATION, new_uri)
+                .status(StatusCode::TEMPORARY_REDIRECT)
+                .body(Body::empty())
+                .unwrap();
+        }
+        AuthenticationResponse::NotAuthenticated => todo!(),
+        AuthenticationResponse::Error(auth_error) => todo!(),
+    }
 }
 
 async fn authenticate_request(
